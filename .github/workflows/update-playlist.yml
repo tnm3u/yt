@@ -3,12 +3,11 @@ name: Update YouTube Live M3U8 Playlist
 # Grant write permissions
 permissions:
   contents: write
-  pull-requests: write
 
 on:
   schedule:
-    - cron: '*/15 * * * *'  # Run every 15 minutes
-  workflow_dispatch:  # Allow manual trigger
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
   push:
     paths:
       - 'streams.txt'
@@ -17,85 +16,76 @@ on:
 jobs:
   update-playlist:
     runs-on: ubuntu-latest
-    
-    permissions:
-      contents: write
-      pull-requests: write
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
-      
-      - name: Install yt-dlp
+
+      - name: Install yt-dlp and jq
         run: |
           pip install --upgrade yt-dlp
-      
+          sudo apt-get update && sudo apt-get install -y jq
+
       - name: Generate M3U8 playlist
         id: generate
         run: |
           echo "🎬 Generating YouTube Live M3U8 Playlist..."
-          
+
+          # Check if streams.txt exists
+          if [ ! -f "streams.txt" ]; then
+            echo "❌ streams.txt not found!"
+            exit 1
+          fi
+
           # Create playlist file
-          cat > streams.m3u8 << EOF
+          cat > streams.m3u8 << 'EOF'
 #EXTM3U
 #EXT-X-VERSION:3
 # Auto-generated YouTube Live M3U8 Playlist
 # Generated: $(date -u '+%Y-%m-%d %H:%M UTC')
-# Repository: ${{ github.repository }}
 EOF
-          
+
           ACTIVE_STREAMS=0
           TOTAL_STREAMS=0
-          
+
           # Read streams.txt
           while IFS= read -r line || [ -n "$line" ]; do
             # Skip comments and empty lines
             [[ "$line" =~ ^#.*$ ]] && continue
             [[ -z "${line// }" ]] && continue
-            
+
             # Extract URL
             url=$(echo "$line" | grep -o 'https\?://[^ ]*' | head -1)
-            
+
             if [ -n "$url" ]; then
               TOTAL_STREAMS=$((TOTAL_STREAMS + 1))
               echo ""
               echo "🔍 Checking: $url"
-              
+
               # Get video info
-              if info=$(yt-dlp --socket-timeout 15 -J "$url" 2>/dev/null); 
-then
+              if info=$(yt-dlp --socket-timeout 15 -J "$url" 2>/dev/null); then
                 title=$(echo "$info" | jq -r '.title // "Unknown Stream"')
                 channel=$(echo "$info" | jq -r '.channel // "YouTube"')
                 is_live=$(echo "$info" | jq -r '.is_live // false')
                 duration=$(echo "$info" | jq -r '.duration // 0')
-                
+
                 # Check if live (live flag OR duration 0 for 24/7 streams)
-                if [ "$is_live" = "true" ] || [ "$duration" = "null" ] || 
-[ "$duration" = "0" ]; then
+                if [ "$is_live" = "true" ] || [ "$duration" = "null" ] || [ "$duration" = "0" ]; then
                   echo "  ✅ Stream is LIVE!"
+                  ACTIVE_STREAMS=$((ACTIVE_STREAMS + 1))
+                  channel_id=$(echo "$channel" | tr -d ' ' | tr -cd '[:alnum:]')
                   
-                  # Get stream URL
-                  if stream_url=$(yt-dlp -g -f "best" "$url" 2>/dev/null | 
-head -1); then
-                    ACTIVE_STREAMS=$((ACTIVE_STREAMS + 1))
-                    channel_id=$(echo "$channel" | tr -d ' ' | tr -cd 
-'[:alnum:]')
-                    
-                    # Add to playlist
-                    cat >> streams.m3u8 << ENTRY
+                  # Add to playlist - FIXED INDENTATION
+                  cat >> streams.m3u8 << ENTRY
 
 #EXTINF:-1 tvg-id="${channel_id}.yt" group-title="News",${title} (Live)
-$stream_url
+$url
 ENTRY
-                    echo "  ✅ Added to playlist"
-                  fi
                 else
                   echo "  ⚠️  Stream is not live"
-                  channel_id=$(echo "$channel" | tr -d ' ' | tr -cd 
-'[:alnum:]')
+                  channel_id=$(echo "$channel" | tr -d ' ' | tr -cd '[:alnum:]')
+                  
+                  # Add offline entry - FIXED INDENTATION
                   cat >> streams.m3u8 << OFFLINE
 
 #EXTINF:-1 tvg-id="${channel_id}.yt" group-title="News",${title} (Offline)
@@ -107,7 +97,7 @@ OFFLINE
               fi
             fi
           done < streams.txt
-          
+
           # Add summary
           cat >> streams.m3u8 << SUMMARY
 
@@ -115,40 +105,20 @@ OFFLINE
 # Active live streams: $ACTIVE_STREAMS
 # Last updated: $(date -u '+%Y-%m-%d %H:%M UTC')
 SUMMARY
-          
+
           echo "active=$ACTIVE_STREAMS" >> $GITHUB_OUTPUT
           echo "total=$TOTAL_STREAMS" >> $GITHUB_OUTPUT
-      
+
       - name: Commit and push changes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config --global user.name "github-actions[bot]"
-          git config --global user.email 
-"github-actions[bot]@users.noreply.github.com"
-          
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add streams.m3u8
-          
-          if git diff --staged --quiet; then
+          if ! git diff --staged --quiet; then
+            git commit -m "🔄 Update live playlists - $(date -u '+%Y-%m-%d %H:%M UTC')"
+            git push
+          else
             echo "No changes to commit"
-            exit 0
-          fi
-          
-          git commit -m "🔄 Update live playlists - $(date -u '+%Y-%m-%d 
-%H:%M UTC')"
-          git push
-      
-      - name: Create summary
-        if: always()
-        run: |
-          echo "## 📊 YouTube Live Stream Status" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ -f "streams.m3u8" ]; then
-            LIVE_COUNT=$(grep -c "(Live)" streams.m3u8 2>/dev/null || echo 
-"0")
-            TOTAL_COUNT=$(grep -c "^#EXTINF" streams.m3u8 2>/dev/null || 
-echo "0")
-            echo "**Live Streams:** $LIVE_COUNT/$TOTAL_COUNT active" >> 
-$GITHUB_STEP_SUMMARY
           fi
