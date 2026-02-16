@@ -1,0 +1,144 @@
+name: YouTube Live M3U8 Generator
+run-name: Generating live M3U8 playlist 🎬
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'streams.txt'
+      - '.github/workflows/live-m3u8.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  generate-playlist:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq ffmpeg
+          pip install --upgrade yt-dlp
+          echo "✅ yt-dlp version: $(yt-dlp --version)"
+
+      - name: Check streams.txt
+        run: |
+          if [ ! -f "streams.txt" ]; then
+            echo "❌ streams.txt not found - creating default"
+            cat > streams.txt << 'EOF'
+# YouTube Live Streams
+https://www.youtube.com/@AriseNewsChannel
+https://www.youtube.com/@channelstv
+https://www.youtube.com/@NewsCentralTV
+EOF
+          else
+            echo "✅ streams.txt found"
+            cat streams.txt
+          fi
+
+      - name: Generate M3U8
+        id: generate
+        run: |
+          echo "🎬 Generating playlist..."
+          
+          # Create playlist header
+          cat > streams.m3u8 << EOF
+#EXTM3U
+#EXT-X-VERSION:3
+# Generated: $(date -u)
+# Streams: $(grep -v "^#" streams.txt | grep -c "^" || echo "0")
+EOF
+
+          ACTIVE=0
+          TOTAL=0
+          
+          while IFS= read -r line; do
+            [[ "$line" =~ ^#.*$ ]] && continue
+            [[ -z "$line" ]] && continue
+            
+            URL=$(echo "$line" | grep -o 'https\?://[^ ]*' | head -1)
+            [ -z "$URL" ] && continue
+            
+            TOTAL=$((TOTAL + 1))
+            echo ""
+            echo "📺 [$TOTAL] $URL"
+            
+            # Try to get stream info
+            if INFO=$(yt-dlp --socket-timeout 10 -J "$URL" 2>/dev/null); then
+              TITLE=$(echo "$INFO" | jq -r '.title // "Unknown"')
+              CHANNEL=$(echo "$INFO" | jq -r '.channel // "YouTube"')
+              IS_LIVE=$(echo "$INFO" | jq -r '.is_live // false')
+              
+              if [ "$IS_LIVE" = "true" ]; then
+                echo "  ✅ LIVE: $TITLE"
+                ACTIVE=$((ACTIVE + 1))
+                
+                # Get stream URL
+                STREAM_URL=$(yt-dlp -g -f "best" "$URL" 2>/dev/null | head -1)
+                
+                if [ -n "$STREAM_URL" ]; then
+                  echo "" >> streams.m3u8
+                  echo "#EXTINF:-1,$CHANNEL - $TITLE (Live)" >> streams.m3u8
+                  echo "$STREAM_URL" >> streams.m3u8
+                else
+                  echo "" >> streams.m3u8
+                  echo "#EXTINF:-1,$CHANNEL (Live - URL pending)" >> streams.m3u8
+                  echo "$URL" >> streams.m3u8
+                fi
+              else
+                echo "  ⚠️ OFFLINE: $TITLE"
+                echo "" >> streams.m3u8
+                echo "#EXTINF:-1,$CHANNEL (Offline)" >> streams.m3u8
+                echo "# Stream offline - $URL" >> streams.m3u8
+              fi
+            else
+              echo "  ❌ Failed to fetch"
+              CHANNEL=$(echo "$URL" | grep -o '@[^/]*' | tr -d '@' || echo "Unknown")
+              echo "" >> streams.m3u8
+              echo "#EXTINF:-1,$CHANNEL (Unavailable)" >> streams.m3u8
+              echo "# Failed to fetch: $URL" >> streams.m3u8
+            fi
+          done < streams.txt
+          
+          # Add summary
+          echo "" >> streams.m3u8
+          echo "# Summary: $ACTIVE/$TOTAL live" >> streams.m3u8
+          echo "# Updated: $(date -u)" >> streams.m3u8
+          
+          echo "active=$ACTIVE" >> $GITHUB_OUTPUT
+          echo "total=$TOTAL" >> $GITHUB_OUTPUT
+          
+          echo ""
+          echo "📊 Summary: $ACTIVE/$TOTAL streams live"
+
+      - name: Show playlist
+        run: |
+          echo ""
+          echo "📄 Generated playlist:"
+          echo "====================="
+          head -20 streams.m3u8
+          echo "..."
+
+      - name: Commit and push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add streams.m3u8
+          
+          if git diff --staged --quiet; then
+            echo "ℹ️ No changes"
+            exit 0
+          fi
+          
+          git commit -m "🔄 Update M3U8 [$(date -u +%H:%M)]"
+          git push
+          echo "✅ Pushed"
