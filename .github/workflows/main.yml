@@ -1,93 +1,34 @@
-name: YouTube Live M3U8 Generator
-run-name: Generating live M3U8 playlist 🎬
-
-on:
-  schedule:
-    - cron: '*/30 * * * *'
-  workflow_dispatch:
-  push:
-    paths:
-      - 'streams.txt'
-      - '.github/workflows/main.yml'
-
-permissions:
-  contents: write
-
-jobs:
-  generate-playlist:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
-
-      - name: Install tools
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq ffmpeg
-          pip install --upgrade yt-dlp
-          echo "yt-dlp version: $(yt-dlp --version)"
-
-      - name: Check streams.txt
-        run: |
-          if [ ! -f "streams.txt" ]; then
-            echo "Creating default streams.txt"
-            echo "# YouTube Live Streams" > streams.txt
-            echo "https://www.youtube.com/@AriseNewsChannel/live" >> streams.txt
-            echo "https://www.youtube.com/@channelstv/live" >> streams.txt
-            echo "https://www.youtube.com/@NewsCentralTV/live" >> streams.txt
-          fi
-          echo "📄 streams.txt content:"
-          cat streams.txt
-
       - name: Generate M3U8 playlist
-        id: generate
         run: |
-          echo "🎬 Generating playlist..."
+          echo "🎬 Generating playlist with configured URLs..."
           
-          # Create header
+          # Create playlist header
           echo "#EXTM3U" > streams.m3u8
           echo "# Generated: $(date -u)" >> streams.m3u8
+          echo "# Note: Streams added without verification" >> streams.m3u8
           echo "" >> streams.m3u8
           
           TOTAL=0
           
-          while read line; do
-            # Skip comments
+          while IFS= read -r line || [ -n "$line" ]; do
+            # Skip comments and empty lines
             [[ "$line" =~ ^#.*$ ]] && continue
-            [[ -z "$line" ]] && continue
+            [[ -z "${line// }" ]] && continue
             
             URL=$(echo "$line" | grep -o 'https\?://[^ ]*' | head -1)
             [ -z "$URL" ] && continue
             
             TOTAL=$((TOTAL + 1))
-            echo ""
-            echo "📺 [$TOTAL] Processing: $URL"
             
-            # Extract channel name
-            CHANNEL=$(echo "$URL" | grep -o '@[^/]*' | tr -d '@' || echo "Channel $TOTAL")
+            # Extract a name from the URL for the EXTINF line
+            NAME=$(echo "$URL" | grep -o '@[^/]*' | tr -d '@' || echo "Channel $TOTAL")
             
-            # Try to get title with timeout
-            TITLE=""
-            if timeout 10 yt-dlp --socket-timeout 5 --get-title "$URL" 2>/dev/null; then
-              TITLE=$(timeout 10 yt-dlp --socket-timeout 5 --get-title "$URL" 2>/dev/null)
-            fi
+            # Add to playlist immediately, no checking
+            echo "" >> streams.m3u8
+            echo "#EXTINF:-1,$NAME (Live Stream)" >> streams.m3u8
+            echo "$URL" >> streams.m3u8
             
-            if [ -n "$TITLE" ]; then
-              echo "  ✅ LIVE: $TITLE"
-              echo "" >> streams.m3u8
-              echo "#EXTINF:-1,$TITLE" >> streams.m3u8
-              echo "$URL" >> streams.m3u8
-            else
-              echo "  ⚠️ OFFLINE/TIMEOUT: $CHANNEL"
-              echo "" >> streams.m3u8
-              echo "#EXTINF:-1,$CHANNEL (Status Unknown - will retry)" >> streams.m3u8
-              echo "$URL" >> streams.m3u8
-            fi
-            
-            sleep 1
+            echo "  Added: $NAME"
             
           done < streams.txt
           
@@ -95,43 +36,5 @@ jobs:
           echo "# Total streams: $TOTAL" >> streams.m3u8
           echo "# Last updated: $(date -u)" >> streams.m3u8
           
-          echo "✅ Playlist generated successfully"
-
-      - name: Show generated playlist
-        run: |
           echo ""
-          echo "📄 Generated streams.m3u8:"
-          echo "=========================="
-          cat streams.m3u8
-
-      - name: Configure git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Commit and push changes
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # First, stash any changes
-          git stash || true
-          
-          # Pull latest changes
-          git pull origin main --rebase || true
-          
-          # Apply stash if any
-          git stash pop || true
-          
-          # Add the new file
-          git add streams.m3u8
-          
-          # Check if there are changes to commit
-          if git diff --staged --quiet; then
-            echo "ℹ️ No changes to commit"
-            exit 0
-          fi
-          
-          # Commit and push
-          git commit -m "🔄 Update M3U8 playlist [$(date -u +%H:%M)]"
-          git push origin main
-          echo "✅ Changes pushed successfully"
+          echo "✅ Playlist generated with $TOTAL streams"
