@@ -1,7 +1,6 @@
-# YouTube Live Streams - Working URLs
-# These are added directly to the playlist without verification
+# YouTube Live Streams - Nigerian News Channels
 
-# Arise News (Confirmed working live stream)
+# Arise News (Live)
 https://www.youtube.com/@AriseNewsChannel/live
 
 # Channels TV
@@ -9,3 +8,15 @@ https://www.youtube.com/@channelstv
 
 # News Central TV
 https://www.youtube.com/@NewsCentralTV
+
+# TVC News Nigeria
+https://www.youtube.com/@TVCNewsNigeria
+
+# NTA News
+https://www.youtube.com/@ntanews360
+
+# AIT News
+https://www.youtube.com/@AIT_Online
+
+# PlusTV Africa
+https://www.youtube.com/@PlusTVAfrica
