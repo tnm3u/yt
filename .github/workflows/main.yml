@@ -16,7 +16,6 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -26,10 +25,11 @@ jobs:
           pip install --upgrade pip yt-dlp
           echo "✅ yt-dlp: $(yt-dlp --version)"
 
-      - name: Setup Cloudflare WARP (Manual)
+      - name: Setup Cloudflare WARP with enhanced error handling
         run: |
           echo "🌐 Setting up Cloudflare WARP..."
           
+          # Install wireguard-tools
           sudo apt-get update
           sudo apt-get install -y wireguard-tools iptables
           
@@ -38,37 +38,95 @@ jobs:
           chmod +x wgcf
           sudo mv wgcf /usr/local/bin/
           
-          # Register and generate
-          wgcf register --accept-tos
-          wgcf generate
+          WARP_SUCCESS=false
           
-          # Parse config values
-          PRIVATE_KEY=$(grep 'PrivateKey = ' wgcf-profile.conf | cut -d= -f2 | tr -d ' ')
-          ADDRESS=$(grep 'Address = ' wgcf-profile.conf | grep -oE '172\.[0-9]+\.[0-9]+\.[0-9]+/[0-9]+')
-          PUBLIC_KEY=$(grep 'PublicKey = ' wgcf-profile.conf | cut -d= -f2 | tr -d ' ')
-          ENDPOINT=$(grep 'Endpoint = ' wgcf-profile.conf | cut -d= -f2 | tr -d ' ')
+          # Retry loop with better error checking
+          for i in {1..3}; do
+            echo "🔄 Attempt $i to setup WARP..."
+            
+            # Clean previous attempts
+            rm -f wgcf-account.toml wgcf-profile.conf 2>/dev/null || true
+            
+            # Register with timeout
+            echo "  📝 Registering account..."
+            if ! timeout 30 wgcf register --accept-tos; then
+              echo "  ⚠️ Registration timed out"
+              continue
+            fi
+            
+            # Check if account file was created
+            if [ ! -f "wgcf-account.toml" ]; then
+              echo "  ⚠️ Account file not created"
+              continue
+            fi
+            echo "  ✅ Account registered"
+            
+            # Generate profile with timeout
+            echo "  🔧 Generating profile..."
+            if ! timeout 30 wgcf generate; then
+              echo "  ⚠️ Profile generation timed out"
+              continue
+            fi
+            
+            # Check if profile was created
+            if [ ! -f "wgcf-profile.conf" ]; then
+              echo "  ⚠️ Profile file not created"
+              continue
+            fi
+            echo "  ✅ Profile generated"
+            
+            # Fix config for GitHub Actions
+            sed -i 's/AllowedIPs = 0.0.0.0\/0,::\/0/AllowedIPs = 0.0.0.0\/0/' wgcf-profile.conf
+            sed -i '/Address = fd/d' wgcf-profile.conf
+            sed -i '/DNS = /d' wgcf-profile.conf
+            
+            # Start WireGuard
+            sudo mkdir -p /etc/wireguard
+            sudo cp wgcf-profile.conf /etc/wireguard/wgcf.conf
+            
+            echo "  🚀 Starting WireGuard..."
+            if sudo wg-quick up /etc/wireguard/wgcf.conf; then
+              echo "  ✅ WireGuard started successfully"
+            else
+              echo "  ⚠️ wg-quick failed, trying manual setup..."
+              sudo ip link add dev wgcf type wireguard
+              sudo ip address add dev wgcf $(grep 'Address = ' wgcf-profile.conf | cut -d= -f2 | tr -d ' ')
+              sudo wg setconf wgcf /etc/wireguard/wgcf.conf
+              sudo ip link set up dev wgcf
+            fi
+            
+            # Wait for connection
+            sleep 5
+            
+            # Verify connection
+            WARP_CHECK=$(curl -s https://cloudflare.com/cdn-cgi/trace)
+            echo "  🔍 WARP status:"
+            echo "$WARP_CHECK" | grep -E "ip|warp"
+            
+            if echo "$WARP_CHECK" | grep -q "warp=on"; then
+              echo "✅ WARP connected successfully on attempt $i"
+              echo "🌐 Current IP: $(curl -s https://ipinfo.io/ip)"
+              echo "🌐 Current ASN: $(curl -s https://ipinfo.io/org)"
+              WARP_SUCCESS=true
+              break
+            fi
+            
+            echo "⚠️ Attempt $i failed, cleaning up..."
+            sudo wg-quick down /etc/wireguard/wgcf.conf 2>/dev/null || true
+            sudo ip link del dev wgcf 2>/dev/null || true
+            
+            if [ $i -lt 3 ]; then
+              echo "⏱️ Waiting 60 seconds before retry..."
+              sleep 60
+            fi
+          done
           
-          echo "🔧 Config: $ADDRESS -> $ENDPOINT"
-          
-          # Setup WireGuard manually (avoiding wg-quick nftables issues)
-          sudo ip link add dev wgcf type wireguard
-          sudo ip address add dev wgcf $ADDRESS
-          sudo wg set wgcf private-key <(echo "$PRIVATE_KEY") peer "$PUBLIC_KEY" endpoint "$ENDPOINT" allowed-ips 0.0.0.0/0
-          sudo ip link set up dev wgcf
-          
-          # Setup routing
-          sudo ip route add default dev wgcf table 200
-          sudo ip rule add from $(echo $ADDRESS | cut -d/ -f1) table 200
-          
-          # Verify
-          sleep 2
-          echo "🔍 Interface status:"
-          sudo wg show wgcf | head -5
-          
-          echo "🌐 IP Check:"
-          curl -s --max-time 8 https://cloudflare.com/cdn-cgi/trace | grep -E "ip|warp" || echo "Check failed"
-          
-          echo "🌐 Public IP: $(curl -s --max-time 8 https://ipinfo.io/ip)"
+          if [ "$WARP_SUCCESS" = false ]; then
+            echo "⚠️ WARP failed after 3 attempts, continuing without it"
+            echo "Cookies will be used directly"
+          else
+            echo "🎉 WARP is active - requests will use Cloudflare IP"
+          fi
 
       - name: Create cookies file
         env:
@@ -81,8 +139,7 @@ jobs:
           echo "$COOKIES" > cookies.txt
           echo "✅ Cookies loaded ($(wc -l < cookies.txt) lines)"
 
-      - name: Generate playlist
-        timeout-minutes: 20
+      - name: Generate playlist with enhanced Python script
         run: |
           cat > generate.py << 'PYTHON_EOF'
           import yt_dlp
@@ -91,29 +148,23 @@ jobs:
           import re
           import os
           import subprocess
-          import sys
           from datetime import datetime, timezone
 
           def get_stream_url(url, cookies_file):
-              """Extract stream URL with timeout protection"""
+              """Enhanced function with better format selection"""
               ydl_opts = {
                   'cookies': cookies_file,
                   'quiet': True,
                   'no_warnings': True,
-                  'socket_timeout': 15,
+                  'socket_timeout': 30,
                   'extract_flat': False,
                   'source_address': '0.0.0.0',
-                  'extractor_args': {
-                      'youtube': {
-                          'player_skip': ['webpage', 'config', 'js'],
-                          'player_client': ['android'],
-                      }
-                  },
+                  'extractor_args': {'youtube': {'skip': ['dash', 'hls']}},
               }
               
-              for attempt in range(3):
-                  delay = min(10 * (2 ** attempt), 45)
-                  print(f"  ⏱️ Attempt {attempt + 1}/3 - wait {delay}s...")
+              for attempt in range(5):
+                  delay = min(20 * (2 ** attempt) + random.randint(0, 10), 300)
+                  print(f"  ⏱️ Attempt {attempt + 1}/5 - waiting {delay}s...")
                   time.sleep(delay)
                   
                   try:
@@ -121,129 +172,185 @@ jobs:
                           info = ydl.extract_info(url, download=False)
                           
                           if not info:
+                              print(f"  ⚠️ No info returned")
                               continue
                           
-                          # Handle playlists (channel live tabs)
-                          if 'entries' in info:
-                              entries = [e for e in info['entries'] if e and e.get('is_live')]
-                              if not entries:
-                                  print("  ⚠️ No live streams in channel")
-                                  return None, info.get('title')
-                              info = entries[0]
+                          is_live = info.get('is_live', False)
+                          live_status = info.get('live_status', '')
                           
-                          if not info.get('is_live'):
-                              print(f"  ⚠️ Not live (status: {info.get('live_status')})")
-                              return None, info.get('title')
+                          if not (is_live or live_status == 'is_live' or live_status == 'is_upcoming'):
+                              print(f"  ⚠️ Not currently live (status: {live_status})")
+                              return None, info.get('title', 'Unknown')
                           
                           video_id = info.get('id')
                           if not video_id:
+                              print(f"  ⚠️ No video ID found")
                               continue
                           
-                          print(f"  ✅ Video ID: {video_id}")
+                          print(f"  ✅ Got video ID: {video_id}")
                           
-                          # Get m3u8 url
-                          for fmt in info.get('formats', []):
-                              if fmt.get('protocol') in ['m3u8', 'm3u8_native'] and fmt.get('url'):
-                                  return fmt['url'], info.get('title')
+                          time.sleep(5)
                           
-                          # Fallback
-                          if info.get('url'):
-                              return info['url'], info.get('title')
-                              
-                  except yt_dlp.utils.DownloadError as e:
-                      err = str(e)
-                      print(f"  ❌ {err[:80]}")
-                      if '404' in err or 'not found' in err.lower():
-                          break  # Don't retry 404s
-                      if 'bot' in err.lower() or 'sign in' in err.lower():
-                          print("  ⚠️ Bot check!")
-                          break
+                          formats = info.get('formats', [])
+                          stream_urls = []
+                          
+                          for fmt in formats:
+                              protocol = fmt.get('protocol', '')
+                              if protocol in ['m3u8', 'm3u8_native'] and fmt.get('url'):
+                                  stream_urls.append({
+                                      'url': fmt['url'],
+                                      'quality': fmt.get('format_note', 'unknown'),
+                                      'protocol': protocol
+                                  })
+                          
+                          for fmt in formats:
+                              if fmt.get('url') and fmt.get('protocol') in ['http', 'https']:
+                                  stream_urls.append({
+                                      'url': fmt['url'],
+                                      'quality': fmt.get('format_note', 'unknown'),
+                                      'protocol': fmt.get('protocol')
+                                  })
+                          
+                          if stream_urls:
+                              for i, s in enumerate(stream_urls[:3]):
+                                  print(f"    📊 Found: {s['quality']} ({s['protocol']})")
+                              return stream_urls[0]['url'], info.get('title', 'Unknown')
+                          
+                          for fmt_id in ['301', '300', '94', 'best']:
+                              try:
+                                  with yt_dlp.YoutubeDL({**ydl_opts, 'format': fmt_id}) as ydl2:
+                                      info2 = ydl2.extract_info(f"https://youtube.com/watch?v={video_id}", download=False)
+                                      if info2 and info2.get('url'):
+                                          print(f"    ✅ Got format {fmt_id}")
+                                          return info2['url'], info.get('title', 'Unknown')
+                              except:
+                                  continue
+                  
                   except Exception as e:
-                      print(f"  ❌ {str(e)[:80]}")
+                      error_str = str(e)
+                      print(f"  ❌ Attempt {attempt + 1} failed: {error_str[:150]}")
+                      
+                      if 'rate' in error_str.lower() or '429' in error_str:
+                          print("  ⚠️ Rate limited")
+                      elif 'bot' in error_str.lower() or 'sign in' in error_str.lower():
+                          print("  ⚠️ Bot detection triggered!")
+                          try:
+                              result = subprocess.run(['curl', '-s', 'https://cloudflare.com/cdn-cgi/trace'], 
+                                                    capture_output=True, text=True, timeout=10)
+                              print(f"  🔍 IP Info: {result.stdout.strip()}")
+                          except:
+                              pass
               
               return None, None
 
-          # Main
           if not os.path.exists('streams.txt'):
               print("❌ streams.txt not found")
-              sys.exit(1)
+              exit(1)
 
           with open('streams.txt', 'r') as f:
               lines = [l.strip() for l in f if l.strip() and not l.startswith('#')]
 
-          m3u8 = ["#EXTM3U", f"# Generated: {datetime.now(timezone.utc).isoformat()}", ""]
+          if not lines:
+              print("⚠️ No streams found in streams.txt")
+              exit(0)
+
+          m3u8 = [
+              "#EXTM3U",
+              f"# Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
+              f"# Total channels: {len(lines)}",
+              ""
+          ]
 
           total = active = 0
 
           for line in lines:
-              # Parse URL
-              url_match = re.search(r'(https?://[^\s]+)', line)
+              url_match = re.search(r'https?://\S+', line)
               if not url_match:
-                  # Construct from handle
-                  m = re.search(r'@([^\s]+)', line)
-                  url = f"https://youtube.com/@{m.group(1)}/live" if m else None
-              else:
-                  url = url_match.group(1)
-              
-              if not url:
                   continue
               
+              url = url_match.group()
               total += 1
-              name = re.search(r'@([^/]+)', url).group(1) if '@' in url else f"Ch{total}"
               
-              print(f"\n📺 [{total}/{len(lines)}] {name}")
+              name_match = re.search(r'@([^/]+)', url)
+              name = name_match.group(1) if name_match else f"Channel {total}"
+              
+              print(f"\n📺 [{total}/{len(lines)}] Processing: {name}")
+              print(f"    URL: {url[:80]}...")
               
               stream_url, title = get_stream_url(url, 'cookies.txt')
               
               if stream_url:
                   active += 1
-                  print(f"  ✅ Live")
-                  m3u8.extend([f"#EXTINF:-1 group-title=\"YouTube Live\",{name} (Live)", stream_url, ""])
+                  print(f"  ✅ SUCCESS: Direct stream acquired")
+                  m3u8.extend([
+                      f"#EXTINF:-1 tvg-name=\"{name}\" group-title=\"YouTube Live\" tvg-logo=\"\",{name} (Live)",
+                      stream_url,
+                      ""
+                  ])
               else:
-                  print(f"  ⚠️ Offline")
-                  m3u8.extend([f"#EXTINF:-1 group-title=\"YouTube Live\",{name} (Offline)", url, ""])
+                  print(f"  ⚠️ FAILED: Using fallback URL")
+                  m3u8.extend([
+                      f"#EXTINF:-1 tvg-name=\"{name}\" group-title=\"YouTube Live\" tvg-logo=\"\",{name} (Offline/YouTube)",
+                      url,
+                      ""
+                  ])
               
               if total < len(lines):
-                  time.sleep(random.randint(30, 90))
+                  cooldown = random.randint(180, 300)
+                  print(f"  ⏱️ Cooldown: {cooldown}s before next channel...")
+                  time.sleep(cooldown)
 
-          m3u8.extend(["", f"# Summary: {active}/{total}", f"# Updated: {datetime.now(timezone.utc).isoformat()}"])
+          m3u8.extend([
+              f"",
+              f"# Summary: {active}/{total} direct streams active",
+              f"# Updated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}"
+          ])
 
           with open('streams.m3u8', 'w') as f:
               f.write('\n'.join(m3u8))
 
-          print(f"\n📊 Result: {active}/{total} active")
+          print(f"\n{'='*50}")
+          print(f"📊 FINAL SUMMARY: {active}/{total} streams with direct URLs")
+          print(f"{'='*50}")
 
           PYTHON_EOF
 
           python generate.py
 
-      - name: Show results
+      - name: Show playlist preview
         run: |
-          echo "📄 Playlist preview:"
-          head -15 streams.m3u8
+          echo ""
+          echo "📄 Generated streams.m3u8:"
+          echo "=========================="
+          head -30 streams.m3u8
           echo "..."
-          tail -5 streams.m3u8
+          echo "=========================="
+          wc -l streams.m3u8
 
       - name: Cleanup & Commit
-        if: always()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Cleanup sensitive files
           rm -f cookies.txt generate.py wgcf-profile.conf wgcf-account.toml
-          sudo ip rule del from $(sudo wg show wgcf | grep 'allowed ips' | head -1 | grep -oE '172\.[0-9]+\.[0-9]+\.[0-9]+') table 200 2>/dev/null || true
-          sudo ip route del default dev wgcf table 200 2>/dev/null || true
+          
+          # Stop WireGuard if it was started
+          sudo wg-quick down /etc/wireguard/wgcf.conf 2>/dev/null || true
           sudo ip link del dev wgcf 2>/dev/null || true
           
+          # Git config
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          
           git add streams.m3u8
           
           if git diff --cached --quiet; then
-            echo "ℹ️ No changes"
+            echo "ℹ️ No changes to commit"
             exit 0
           fi
           
-          git commit -m "🔄 Update [$(date -u +%H:%M)] - $(grep -c '^http' streams.m3u8) streams"
+          ACTIVE_COUNT=$(grep -c '^http' streams.m3u8 || echo "0")
+          git commit -m "🔄 Update playlist [$(date -u +%H:%M)] - ${ACTIVE_COUNT} active streams"
           git pull --rebase origin main || true
           git push origin main
-          echo "✅ Done"
+          echo "✅ Playlist updated and pushed"
