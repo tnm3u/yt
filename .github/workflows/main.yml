@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.WORKFLOW_PAT }}  # Use PAT for checkout too
+          token: ${{ secrets.WORKFLOW_PAT }}
 
       - name: Setup Python & yt-dlp
         run: |
@@ -79,6 +79,7 @@ jobs:
           import sys
           from datetime import datetime, timezone
 
+          # Your Cloudflare Worker proxy - using the working domain from your deployment
           PROXY_BASE = "https://siteproxy.chidex4k43342.workers.dev/yourtube/"
 
           def get_stream_url(url, cookies_file):
@@ -169,6 +170,7 @@ jobs:
               "#EXTM3U",
               f"# Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
               f"# Total channels: {len(lines)}",
+              f"# Proxy: {PROXY_BASE}",
               ""
           ]
 
@@ -190,7 +192,8 @@ jobs:
                   active += 1
                   active_channels.append(channel_name)
                   
-                  if '1080' in stream_url or 'height":1080' in str(stream_url):
+                  # Determine quality
+                  if '1080' in stream_url:
                       quality_stats["1080p"] += 1
                       quality_tag = "1080p"
                   elif '720' in stream_url:
@@ -204,14 +207,18 @@ jobs:
                       quality_tag = "HD"
                   
                   print(f"  ✅ SUCCESS: {quality_tag} stream")
+                  
+                  # Use proxy with just the video ID (more reliable)
+                  proxied_url = PROXY_BASE + video_id
+                  
                   m3u8.append(f'#EXTINF:-1 tvg-name="{channel_name}" group-title="YouTube Live",{channel_name} (Live - {quality_tag})')
-                  m3u8.append(stream_url)
+                  m3u8.append(proxied_url)
                   m3u8.append("")
               elif video_id:
                   print(f"  ⚠️ Using proxied YouTube page")
                   offline_channels.append(channel_name)
-                  proxied_url = PROXY_BASE + f"https://www.youtube.com/watch?v={video_id}"
-                  m3u8.append(f'#EXTINF:-1 tvg-name="{channel_name}" group-title="YouTube Live",{channel_name} (Live - Proxy)')
+                  proxied_url = PROXY_BASE + video_id
+                  m3u8.append(f'#EXTINF:-1 tvg-name="{channel_name}" group-title="YouTube Live",{channel_name} (Proxy)')
                   m3u8.append(proxied_url)
                   m3u8.append("")
               else:
@@ -224,7 +231,7 @@ jobs:
           m3u8.extend([
               "",
               f"# Summary: {active}/{len(lines)} streams active",
-              f"# Quality: {quality_stats['1080p']}x1080p, {quality_stats['720p']}x720p, {quality_stats['480p']}x480p",
+              f"# Quality: 1080p:{quality_stats['1080p']} 720p:{quality_stats['720p']} 480p:{quality_stats['480p']}",
               f"# Updated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}"
           ])
 
@@ -243,7 +250,7 @@ jobs:
 
           print(f"\n{'='*50}")
           print(f"📊 FINAL: {active}/{len(lines)} streams active")
-          print(f"📊 Quality breakdown: 1080p:{quality_stats['1080p']} 720p:{quality_stats['720p']} 480p:{quality_stats['480p']}")
+          print(f"📊 Quality: 1080p:{quality_stats['1080p']} 720p:{quality_stats['720p']} 480p:{quality_stats['480p']}")
           print(f"{'='*50}")
 
           PYTHON_EOF
@@ -293,12 +300,6 @@ jobs:
             720p: ${{ steps.stats.outputs.quality_720p }}
             480p: ${{ steps.stats.outputs.quality_480p }}
             
-            📡 *Live Channels:*
-            ${{ steps.stats.outputs.active_channels }}
-            
-            ⚫ *Offline Channels:*
-            ${{ steps.stats.outputs.offline_channels }}
-            
             🔗 *Playlist URL:*
             https://raw.githubusercontent.com/uticap/Youtube-to-M3u8/main/streams.m3u8
             
@@ -346,17 +347,3 @@ jobs:
             echo "❌ All push attempts failed after $MAX_RETRIES retries"
             exit 1
           fi
-
-      - name: Send failure notification
-        if: failure()
-        uses: cbrgm/telegram-github-action@v1
-        with:
-          token: ${{ secrets.TELEGRAM_TOKEN }}
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          message: |
-            ❌ *Workflow Failed*
-            
-            Repository: ${{ github.repository }}
-            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            
-            Please check the logs for details.
