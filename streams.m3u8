@@ -1,16 +1,16 @@
 #EXTM3U
-# Generated: 2026-02-22 18:33:26 UTC
+# Generated: 2026-02-22 18:48:43 UTC
 # Total channels: 3
 
-#EXTINF:-1 tvg-name="AriseNewsChannel" group-title="YouTube Live",AriseNewsChannel (YouTube)
-https://www.youtube.com/@AriseNewsChannel/live
+#EXTINF:-1 tvg-name="AriseNewsChannel" group-title="YouTube Live",AriseNewsChannel (Live)
+https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1771807733/ei/lU-badrqJeilir4P4KzQCQ/ip/2a09:bac5:7492:1cd2::2df:e5/id/4uHZdlX-DT4.6/itag/301/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/sgoap/gir%3Dyes%3Bitag%3D140/sgovp/gir%3Dyes%3Bitag%3D299/rqh/1/hls_chunk_host/rr1---sn-vgqsrndl.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/30/manifest_duration/30/bui/AVNa5-zHG9HYSkiYJy3EvlVGrOybvif7NT96jnCWhkrzNrjuAxPllmsZINjxSEYKsPzYpSJzrpQNU4sg/spc/6dlaFLkUnXY97LxWrHlQ/vprv/1/reg/0/playlist_type/DVR/met/1771786133,/mh/VX/mm/44/mn/sn-vgqsrndl/ms/lva/mv/u/mvi/1/pl/41/rms/lva,lva/dover/11/pacing/0/keepalive/yes/fexp/51552689,51565116,51565681,51580968/mt/1771785106/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,sgoap,sgovp,rqh,xpc,playlist_duration,manifest_duration,bui,spc,vprv,reg,playlist_type/sig/AJEij0EwRAIgGnjxb0CJ_D5733mOuy6zvovRwvS_vIJ6B_UFfiGd1jQCICgN1jxRs9osPwkJq_e_i9GCS8D2skWDHe2aRLGQbIR8/lsparams/hls_chunk_host,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRQIgFwTV6Tr-ZbczsDwbKurPvzplJfYHJ0q-WBXlXdoha-4CIQCF_4ucSwkMxEw0AnHH36pWBaILJL9HRkkeZfDEsTjRSA%3D%3D/playlist/index.m3u8
 
-#EXTINF:-1 tvg-name="TVCNewsNigeria" group-title="YouTube Live",TVCNewsNigeria (YouTube)
-https://www.youtube.com/@TVCNewsNigeria/live
+#EXTINF:-1 tvg-name="TVCNewsNigeria" group-title="YouTube Live",TVCNewsNigeria (Live)
+https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1771807788/ei/zE-bafjXCP-tir4P5dbq4As/ip/2a09:bac5:7492:1cd2::2df:e5/id/b-Yzp0l8cAM.3/itag/96/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/sgoap/gir%3Dyes%3Bitag%3D140/sgovp/gir%3Dyes%3Bitag%3D137/rqh/1/hls_chunk_host/rr5---sn-vgqsrnds.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/bui/AVNa5-wuAReSzn5YhpBxS5SGp1BLEqO4Aeboy9nYABonnbuMk-RNgNIxCGYfyKDfM0XkZmDnN_g85nli/spc/6dlaFD9ifI_UGW33P3LX/vprv/1/playlist_type/DVR/met/1771786188,/mh/9J/mm/44/mn/sn-vgqsrnds/ms/lva/mv/u/mvi/5/pl/41/rms/lva,lva/dover/11/pacing/0/keepalive/yes/fexp/51552689,51565116,51565681,51580968/mt/1771785106/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,sgoap,sgovp,rqh,xpc,bui,spc,vprv,playlist_type/sig/AJEij0EwRgIhAI0jUUol95QW00rbpWB7uqeUr91hywmqq31EfgEUDh0BAiEAq4LGkp0zjv1ms5q1G59CCJnFjT5JSpu001q1IXvSHsE%3D/lsparams/hls_chunk_host,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRQIgCZKY-Lol9tTk3fFaLi25xVjm-ja0PjKcpdLBZ1In6EcCIQDlOh9aPt4RvovLMMvG96rEja3phRaowoA8M1j0_BFDpg%3D%3D/playlist/index.m3u8
 
-#EXTINF:-1 tvg-name="ChannelsTelevision" group-title="YouTube Live",ChannelsTelevision (YouTube)
-https://www.youtube.com/@ChannelsTelevision/live
+#EXTINF:-1 tvg-name="ChannelsTelevision" group-title="YouTube Live",ChannelsTelevision (Live)
+https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1771807842/ei/AlCbaZWlAsLcybgPsOjBiAI/ip/2a09:bac5:7492:1cd2::2df:e5/id/d4zDorDl5UE.6/itag/95/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/sgoap/gir%3Dyes%3Bitag%3D140/sgovp/gir%3Dyes%3Bitag%3D136/rqh/1/hls_chunk_host/rr1---sn-vgqsrn6k.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/bui/AVNa5-w0GNdjmTX83w3-3MOVWv-9_T8HPqsBlxM1eAo4_p-60nYGmRl1Oyqly2E2s93ttZLxxzFJRUZB/spc/6dlaFKrrkGyeLhfOn6xi/vprv/1/playlist_type/DVR/met/1771786242,/mh/39/mm/44/mn/sn-vgqsrn6k/ms/lva/mv/u/mvi/1/pl/41/rms/lva,lva/dover/11/pacing/0/keepalive/yes/fexp/51552689,51565116,51565682,51580968/mt/1771785106/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,sgoap,sgovp,rqh,xpc,bui,spc,vprv,playlist_type/sig/AJEij0EwRQIgcJiKnYsw7WZEf-hQpkE_PRKClDjIA7YZCumyV9RczhoCIQDCMeEh9fxXM7Am-OXKDU8x_6rOi546Wc_NnAIaCQlg4g%3D%3D/lsparams/hls_chunk_host,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRQIhAIFPQXYBLma14f92tTNFX_aS19PEPsgjTWqx3hgzX9R3AiBy6kjNfm1LswPucFijGSTR-695CplCxJSG3VPEV4ADXQ%3D%3D/playlist/index.m3u8
 
 
-# Summary: 0/3 streams active
-# Updated: 2026-02-22 18:35:14 UTC
+# Summary: 3/3 streams active
+# Updated: 2026-02-22 18:50:42 UTC
