@@ -1,5 +1,5 @@
 name: YouTube Live M3U8 Generator
-run-name: Generate playlist with WARP 🎬
+run-name: Generate playlist with WARP & Proxy 🎬
 
 on:
   workflow_dispatch:
@@ -16,11 +16,10 @@ permissions:
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 45  # Prevent infinite runs
+    timeout-minutes: 45
     
-    # Add resource optimization
     strategy:
-      fail-fast: false  # Don't cancel other jobs if one fails
+      fail-fast: false
     
     steps:
       - name: Checkout code
@@ -31,33 +30,28 @@ jobs:
           pip install --upgrade pip yt-dlp
           echo "✅ yt-dlp: $(yt-dlp --version)"
 
-      - name: Setup Cloudflare WARP with enhanced error handling
+      - name: Setup Cloudflare WARP
         id: warp
-        continue-on-error: true  # Don't fail if WARP fails
+        continue-on-error: true
         run: |
           echo "🌐 Setting up Cloudflare WARP..."
           
-          # Install wireguard-tools
           sudo apt-get update
           sudo apt-get install -y wireguard-tools iptables
           
-          # Install wgcf
           curl -fsSL https://github.com/ViRb3/wgcf/releases/download/v2.2.22/wgcf_2.2.22_linux_amd64 -o wgcf
           chmod +x wgcf
           sudo mv wgcf /usr/local/bin/
           
           WARP_SUCCESS=false
           
-          # Retry loop with better error checking
-          for i in {1..2}; do  # Reduced from 3 to 2 attempts
+          for i in {1..2}; do
             echo "🔄 Attempt $i to setup WARP..."
             
-            # Clean previous attempts
             rm -f wgcf-account.toml wgcf-profile.conf 2>/dev/null || true
             
-            # Register with timeout
             echo "  📝 Registering account..."
-            if ! timeout 20 wgcf register --accept-tos; then  # Reduced timeout
+            if ! timeout 20 wgcf register --accept-tos; then
               echo "  ⚠️ Registration timed out"
               continue
             fi
@@ -68,7 +62,6 @@ jobs:
             fi
             echo "  ✅ Account registered"
             
-            # Generate profile with timeout
             echo "  🔧 Generating profile..."
             if ! timeout 20 wgcf generate; then
               echo "  ⚠️ Profile generation timed out"
@@ -81,12 +74,10 @@ jobs:
             fi
             echo "  ✅ Profile generated"
             
-            # Fix config for GitHub Actions
             sed -i 's/AllowedIPs = 0.0.0.0\/0,::\/0/AllowedIPs = 0.0.0.0\/0/' wgcf-profile.conf
             sed -i '/Address = fd/d' wgcf-profile.conf
             sed -i '/DNS = /d' wgcf-profile.conf
             
-            # Start WireGuard with timeout
             sudo mkdir -p /etc/wireguard
             sudo cp wgcf-profile.conf /etc/wireguard/wgcf.conf
             
@@ -101,10 +92,8 @@ jobs:
               sudo ip link set up dev wgcf
             fi
             
-            # Wait for connection
             sleep 3
             
-            # Verify connection
             WARP_CHECK=$(curl -s --max-time 5 https://cloudflare.com/cdn-cgi/trace)
             echo "  🔍 WARP status:"
             echo "$WARP_CHECK" | grep -E "ip|warp"
@@ -143,7 +132,7 @@ jobs:
           echo "$COOKIES" > cookies.txt
           echo "✅ Cookies loaded ($(wc -l < cookies.txt) lines)"
 
-      - name: Generate playlist with enhanced get_stream_url function
+      - name: Generate playlist with Vercel Proxy
         run: |
           cat > generate.py << 'PYTHON_EOF'
           import yt_dlp
@@ -152,10 +141,21 @@ jobs:
           import re
           import os
           import sys
+          import urllib.parse
+          import json
           from datetime import datetime, timezone
 
+          # ===== CONFIGURATION =====
+          # Your Vercel proxy URL (from your deployment)
+          PROXY_BASE = "https://m3u8-proxy-ebon.vercel.app/m3u8-proxy?url="
+          
+          # Headers needed for YouTube streams
+          YOUTUBE_HEADERS = json.dumps({"referer": "https://youtube.com"})
+          ENCODED_HEADERS = urllib.parse.quote(YOUTUBE_HEADERS)
+          # =========================
+
           def get_stream_url(url, cookies_file):
-              """Enhanced function that actually gets the stream URL"""
+              """Enhanced function that gets the stream URL"""
               ydl_opts = {
                   'cookies': cookies_file,
                   'quiet': True,
@@ -164,7 +164,6 @@ jobs:
               }
               
               try:
-                  # First, get the video ID
                   with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                       info = ydl.extract_info(url, download=False)
                       if not info:
@@ -176,10 +175,9 @@ jobs:
                       
                       print(f"  ✅ Got video ID: {video_id}")
                       
-                      # Now get the actual stream URL
                       stream_url = None
                       
-                      # Method 1: Try to get best format with explicit format selection
+                      # Method 1: Try best m3u8 format
                       try:
                           ydl_opts2 = ydl_opts.copy()
                           ydl_opts2['format'] = 'best[protocol=m3u8]/best'
@@ -189,7 +187,6 @@ jobs:
                                   stream_url = info2.get('url')
                                   print(f"  ✅ Got direct stream URL (method 1)")
                       except Exception as e:
-                          print(f"  ⚠️ Method 1 failed: {str(e)[:50]}")
                           pass
                       
                       # Method 2: Try format 301 (1080p)
@@ -203,7 +200,6 @@ jobs:
                                       stream_url = info3.get('url')
                                       print(f"  ✅ Got direct stream URL (method 2 - 1080p)")
                           except Exception as e:
-                              print(f"  ⚠️ Method 2 failed: {str(e)[:50]}")
                               pass
                       
                       # Method 3: Try format 300 (720p)
@@ -217,10 +213,9 @@ jobs:
                                       stream_url = info4.get('url')
                                       print(f"  ✅ Got direct stream URL (method 3 - 720p)")
                           except Exception as e:
-                              print(f"  ⚠️ Method 3 failed: {str(e)[:50]}")
                               pass
                       
-                      # Method 4: Try best format overall
+                      # Method 4: Try best overall
                       if not stream_url:
                           try:
                               ydl_opts5 = ydl_opts.copy()
@@ -231,7 +226,6 @@ jobs:
                                       stream_url = info5.get('url')
                                       print(f"  ✅ Got direct stream URL (method 4 - best)")
                           except Exception as e:
-                              print(f"  ⚠️ Method 4 failed: {str(e)[:50]}")
                               pass
                       
                       if stream_url:
@@ -241,7 +235,7 @@ jobs:
                           return None, info.get('title', 'Unknown')
                           
               except Exception as e:
-                  print(f"  ⚠️ Error in get_stream_url: {str(e)[:100]}")
+                  print(f"  ⚠️ Error: {str(e)[:100]}")
                   return None, None
 
           # Main execution
@@ -260,6 +254,7 @@ jobs:
               "#EXTM3U",
               f"# Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
               f"# Total channels: {len(lines)}",
+              f"# Proxy: {PROXY_BASE}",
               ""
           ]
 
@@ -278,27 +273,30 @@ jobs:
               
               print(f"\n📺 [{total}/{len(lines)}] Processing: {name}")
               
-              # Single attempt with short delay
               time.sleep(random.randint(5, 10))
               stream_url, title = get_stream_url(url, 'cookies.txt')
               
               if stream_url:
                   active += 1
-                  print(f"  ✅ SUCCESS: Got direct stream")
+                  
+                  # Create proxied URL
+                  encoded_url = urllib.parse.quote(stream_url, safe='')
+                  proxied_url = f"{PROXY_BASE}{encoded_url}&headers={ENCODED_HEADERS}"
+                  
+                  print(f"  ✅ SUCCESS: Got direct stream, proxied via Vercel")
                   m3u8.extend([
                       f"#EXTINF:-1 tvg-name=\"{name}\" group-title=\"YouTube Live\",{name} (Live)",
-                      stream_url,
+                      proxied_url,
                       ""
                   ])
               else:
-                  print(f"  ⚠️ Using fallback URL")
+                  print(f"  ⚠️ Using fallback URL (not proxied)")
                   m3u8.extend([
                       f"#EXTINF:-1 tvg-name=\"{name}\" group-title=\"YouTube Live\",{name} (YouTube)",
                       url,
                       ""
                   ])
               
-              # Minimal cooldown between channels
               if total < len(lines):
                   cooldown = random.randint(30, 60)
                   print(f"  ⏱️ Cooldown: {cooldown}s")
@@ -306,16 +304,17 @@ jobs:
 
           m3u8.extend([
               f"",
-              f"# Summary: {active}/{total} streams active",
+              f"# Summary: {active}/{total} streams active (proxied)",
               f"# Updated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}"
           ])
 
           with open('streams.m3u8', 'w') as f:
               f.write('\n'.join(m3u8))
 
-          print(f"\n{'='*40}")
-          print(f"📊 FINAL: {active}/{total} streams active")
-          print(f"{'='*40}")
+          print(f"\n{'='*50}")
+          print(f"📊 FINAL: {active}/{total} streams active and proxied")
+          print(f"🔗 Proxy base: {PROXY_BASE}")
+          print(f"{'='*50}")
 
           PYTHON_EOF
 
@@ -354,4 +353,4 @@ jobs:
           git commit -m "🔄 Update playlist [$(date -u +%H:%M)] - ${ACTIVE_COUNT} active"
           git pull --rebase origin main || true
           git push origin main
-          echo "✅ Playlist updated"
+          echo "✅ Playlist updated with Vercel proxy"
