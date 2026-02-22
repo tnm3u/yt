@@ -1,10 +1,6 @@
 #EXTM3U
-<<<<<<< Updated upstream
-# Generated: 2026-02-22 21:39:25 UTC
-=======
-# Generated: 2026-02-22 22:03:49 UTC
->>>>>>> Stashed changes
-# Total channels: 3
+# Generated: 2026-02-22 22:20:53 UTC
+# Total channels: 5
 # Proxy: https://siteproxy.chidex4k43342.workers.dev/yourtube/
 
 #EXTINF:-1 tvg-name="AriseNewsChannel" group-title="YouTube Live",AriseNewsChannel (Live)
@@ -16,10 +12,12 @@ https://siteproxy.chidex4k43342.workers.dev/yourtube/https://www.youtube.com/wat
 #EXTINF:-1 tvg-name="ChannelsTelevision" group-title="YouTube Live",ChannelsTelevision (Live)
 https://siteproxy.chidex4k43342.workers.dev/yourtube/https://www.youtube.com/watch?v=d4zDorDl5UE
 
+#EXTINF:-1 tvg-name="Channel 4" group-title="YouTube Live",Channel 4 (YouTube)
+https://www.youtube.com/NewsCentralAfrica/live
 
-# Summary: 3/3 streams active (proxied)
-<<<<<<< Updated upstream
-# Updated: 2026-02-22 21:41:18 UTC
-=======
-# Updated: 2026-02-22 22:05:37 UTC
->>>>>>> Stashed changes
+#EXTINF:-1 tvg-name="NTALive" group-title="YouTube Live",NTALive (Live)
+https://siteproxy.chidex4k43342.workers.dev/yourtube/https://www.youtube.com/watch?v=sSb1PdqwQ8k
+
+
+# Summary: 4/5 streams active (proxied)
+# Updated: 2026-02-22 22:24:28 UTC
