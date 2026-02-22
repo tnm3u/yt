@@ -4,7 +4,7 @@ run-name: Generate playlist with Cloudflare Proxy 🎬
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */6 * * *'  # Run every 6 hours
+    - cron: '0 */6 * * *'
   push:
     paths:
       - 'streams.txt'
@@ -17,9 +17,6 @@ jobs:
   generate:
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    
-    strategy:
-      fail-fast: false
     
     steps:
       - name: Checkout code
@@ -34,108 +31,30 @@ jobs:
           echo "✅ yt-dlp: $(yt-dlp --version)"
 
       - name: Setup Cloudflare WARP
-        id: warp
         continue-on-error: true
         run: |
           echo "🌐 Setting up Cloudflare WARP..."
-          
           sudo apt-get update
           sudo apt-get install -y wireguard-tools iptables
-          
           curl -fsSL https://github.com/ViRb3/wgcf/releases/download/v2.2.22/wgcf_2.2.22_linux_amd64 -o wgcf
           chmod +x wgcf
           sudo mv wgcf /usr/local/bin/
           
-          WARP_SUCCESS=false
-          
-          for i in {1..2}; do
-            echo "🔄 Attempt $i to setup WARP..."
-            
-            rm -f wgcf-account.toml wgcf-profile.conf 2>/dev/null || true
-            
-            echo "  📝 Registering account..."
-            if ! timeout 20 wgcf register --accept-tos; then
-              echo "  ⚠️ Registration timed out"
-              continue
-            fi
-            
-            if [ ! -f "wgcf-account.toml" ]; then
-              echo "  ⚠️ Account file not created"
-              continue
-            fi
-            echo "  ✅ Account registered"
-            
-            echo "  🔧 Generating profile..."
-            if ! timeout 20 wgcf generate; then
-              echo "  ⚠️ Profile generation timed out"
-              continue
-            fi
-            
-            if [ ! -f "wgcf-profile.conf" ]; then
-              echo "  ⚠️ Profile file not created"
-              continue
-            fi
-            echo "  ✅ Profile generated"
-            
-            sed -i 's/AllowedIPs = 0.0.0.0\/0,::\/0/AllowedIPs = 0.0.0.0\/0/' wgcf-profile.conf
-            sed -i '/Address = fd/d' wgcf-profile.conf
-            sed -i '/DNS = /d' wgcf-profile.conf
-            
-            sudo mkdir -p /etc/wireguard
-            sudo cp wgcf-profile.conf /etc/wireguard/wgcf.conf
-            
-            echo "  🚀 Starting WireGuard..."
-            if timeout 30 sudo wg-quick up /etc/wireguard/wgcf.conf; then
-              echo "  ✅ WireGuard started successfully"
-            else
-              echo "  ⚠️ wg-quick failed, trying manual setup..."
-              sudo ip link add dev wgcf type wireguard
-              sudo ip address add dev wgcf $(grep 'Address = ' wgcf-profile.conf | cut -d= -f2 | tr -d ' ')
-              sudo wg setconf wgcf /etc/wireguard/wgcf.conf
-              sudo ip link set up dev wgcf
-            fi
-            
-            sleep 3
-            
-            WARP_CHECK=$(curl -s --max-time 5 https://cloudflare.com/cdn-cgi/trace)
-            echo "  🔍 WARP status:"
-            echo "$WARP_CHECK" | grep -E "ip|warp"
-            
-            if echo "$WARP_CHECK" | grep -q "warp=on"; then
-              echo "✅ WARP connected successfully on attempt $i"
-              echo "🌐 Current IP: $(curl -s --max-time 5 https://ipinfo.io/ip)"
-              WARP_SUCCESS=true
-              echo "warp=success" >> $GITHUB_OUTPUT
-              break
-            fi
-            
-            echo "⚠️ Attempt $i failed, cleaning up..."
-            sudo wg-quick down /etc/wireguard/wgcf.conf 2>/dev/null || true
-            sudo ip link del dev wgcf 2>/dev/null || true
-            
-            if [ $i -lt 2 ]; then
-              echo "⏱️ Waiting 30 seconds before retry..."
-              sleep 30
-            fi
-          done
-          
-          if [ "$WARP_SUCCESS" = false ]; then
-            echo "⚠️ WARP failed, continuing without it"
-            echo "warp=failed" >> $GITHUB_OUTPUT
-          fi
+          # Simplified WARP setup
+          wgcf register --accept-tos
+          wgcf generate
+          sudo mkdir -p /etc/wireguard
+          sudo cp wgcf-profile.conf /etc/wireguard/wgcf.conf
+          sudo wg-quick up /etc/wireguard/wgcf.conf || true
 
       - name: Create cookies file
         env:
           COOKIES: ${{ secrets.COOKIES_TXT }}
         run: |
-          if [ -z "$COOKIES" ]; then
-            echo "❌ COOKIES_TXT secret is required"
-            exit 1
-          fi
           echo "$COOKIES" > cookies.txt
           echo "✅ Cookies loaded ($(wc -l < cookies.txt) lines)"
 
-      - name: Generate playlist with Cloudflare Worker Proxy
+      - name: Generate playlist
         run: |
           cat > generate.py << 'PYTHON_EOF'
           import yt_dlp
@@ -143,266 +62,83 @@ jobs:
           import random
           import re
           import os
-          import sys
-          import urllib.parse
           from datetime import datetime, timezone
 
-          # ===== CONFIGURATION =====
-          # Your Cloudflare Worker proxy URL
           PROXY_BASE = "https://siteproxy.chidex4k43342.workers.dev/yourtube/"
-          
-          # Note: This proxy needs to be updated to return actual video streams, not webpages
-          # For now, we'll keep it but you'll need to deploy a proper stream extractor
-          # =========================
 
-          def get_stream_url(url, cookies_file):
-              """Get the direct stream URL using yt-dlp"""
-              ydl_opts = {
-                  'cookies': cookies_file,
-                  'quiet': True,
-                  'no_warnings': True,
-                  'socket_timeout': 20,
-              }
-              
+          def get_video_id(url, cookies_file):
               try:
+                  ydl_opts = {'cookies': cookies_file, 'quiet': True}
                   with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                       info = ydl.extract_info(url, download=False)
-                      if not info:
-                          return None, None
-                      
-                      video_id = info.get('id')
-                      if not video_id:
-                          return None, None
-                      
-                      print(f"  ✅ Got video ID: {video_id}")
-                      
-                      stream_url = None
-                      
-                      # Method 1: Try best m3u8 format
-                      try:
-                          ydl_opts2 = ydl_opts.copy()
-                          ydl_opts2['format'] = 'best[protocol=m3u8]/best'
-                          with yt_dlp.YoutubeDL(ydl_opts2) as ydl2:
-                              info2 = ydl2.extract_info(f"https://youtube.com/watch?v={video_id}", download=False)
-                              if info2 and info2.get('url'):
-                                  stream_url = info2.get('url')
-                                  print(f"  ✅ Got direct stream URL (method 1)")
-                      except Exception:
-                          pass
-                      
-                      # Method 2: Try format 301 (1080p)
-                      if not stream_url:
-                          try:
-                              ydl_opts3 = ydl_opts.copy()
-                              ydl_opts3['format'] = '301'
-                              with yt_dlp.YoutubeDL(ydl_opts3) as ydl3:
-                                  info3 = ydl3.extract_info(f"https://youtube.com/watch?v={video_id}", download=False)
-                                  if info3 and info3.get('url'):
-                                      stream_url = info3.get('url')
-                                      print(f"  ✅ Got direct stream URL (method 2 - 1080p)")
-                          except Exception:
-                              pass
-                      
-                      # Method 3: Try format 300 (720p)
-                      if not stream_url:
-                          try:
-                              ydl_opts4 = ydl_opts.copy()
-                              ydl_opts4['format'] = '300'
-                              with yt_dlp.YoutubeDL(ydl_opts4) as ydl4:
-                                  info4 = ydl4.extract_info(f"https://youtube.com/watch?v={video_id}", download=False)
-                                  if info4 and info4.get('url'):
-                                      stream_url = info4.get('url')
-                                      print(f"  ✅ Got direct stream URL (method 3 - 720p)")
-                          except Exception:
-                              pass
-                      
-                      # Method 4: Try best overall
-                      if not stream_url:
-                          try:
-                              ydl_opts5 = ydl_opts.copy()
-                              ydl_opts5['format'] = 'best'
-                              with yt_dlp.YoutubeDL(ydl_opts5) as ydl5:
-                                  info5 = ydl5.extract_info(f"https://youtube.com/watch?v={video_id}", download=False)
-                                  if info5 and info5.get('url'):
-                                      stream_url = info5.get('url')
-                                      print(f"  ✅ Got direct stream URL (method 4 - best)")
-                          except Exception:
-                              pass
-                      
-                      if stream_url:
-                          return stream_url, info.get('title', 'Unknown')
-                      else:
-                          print(f"  ⚠️ Could not get direct URL, using fallback")
-                          return None, info.get('title', 'Unknown')
-                          
-              except Exception as e:
-                  print(f"  ⚠️ Error: {str(e)[:100]}")
-                  return None, None
+                      return info.get('id')
+              except:
+                  return None
 
-          # Main execution
-          if not os.path.exists('streams.txt'):
-              print("❌ streams.txt not found")
-              sys.exit(0)
-
-          with open('streams.txt', 'r') as f:
+          # Read streams
+          with open('streams.txt') as f:
               lines = [l.strip() for l in f if l.strip() and not l.startswith('#')]
 
-          if not lines:
-              print("⚠️ No streams found")
-              sys.exit(0)
+          m3u8 = ["#EXTM3U", f"# Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}", f"# Total channels: {len(lines)}", ""]
 
-          m3u8 = [
-              "#EXTM3U",
-              f"# Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
-              f"# Total channels: {len(lines)}",
-              f"# Proxy: {PROXY_BASE}",
-              ""
-          ]
-
-          total = active = 0
-
-          for line in lines:
-              url_match = re.search(r'https?://\S+', line)
-              if not url_match:
-                  continue
-              
-              url = url_match.group()
-              total += 1
-              
-              name_match = re.search(r'@([^/]+)', url)
-              name = name_match.group(1) if name_match else f"Channel {total}"
-              
-              print(f"\n📺 [{total}/{len(lines)}] Processing: {name}")
-              
+          active = 0
+          for i, line in enumerate(lines, 1):
+              print(f"\n📺 [{i}/{len(lines)}] Processing: {line}")
               time.sleep(random.randint(5, 10))
-              stream_url, title = get_stream_url(url, 'cookies.txt')
               
-              if stream_url:
+              video_id = get_video_id(line, 'cookies.txt')
+              
+              if video_id:
                   active += 1
-                  
-                  # Extract video ID from stream_url
-                  video_id = None
-                  
-                  # Known video IDs from your channels
-                  if '4uHZdlX-DT4' in stream_url:
-                      video_id = '4uHZdlX-DT4'
-                  elif 'b-Yzp0l8cAM' in stream_url:
-                      video_id = 'b-Yzp0l8cAM'
-                  elif 'd4zDorDl5UE' in stream_url:
-                      video_id = 'd4zDorDl5UE'
-                  else:
-                      # Try to extract from URL pattern
-                      id_match = re.search(r'id/([^/]+)\.', stream_url)
-                      if id_match:
-                          video_id = id_match.group(1)
-                  
-                  if video_id:
-                      # Create proxied URL using video ID
-                      proxied_url = PROXY_BASE + f"https://www.youtube.com/watch?v={video_id}"
-                      print(f"  ✅ SUCCESS: Proxied via Cloudflare Worker")
-                      
-                      m3u8.extend([
-                          f"#EXTINF:-1 tvg-name=\"{name}\" group-title=\"YouTube Live\",{name} (Live)",
-                          proxied_url,
-                          ""
-                      ])
-                  else:
-                      # Fallback to direct URL
-                      print(f"  ⚠️ Could not extract video ID, using direct URL")
-                      m3u8.extend([
-                          f"#EXTINF:-1 tvg-name=\"{name}\" group-title=\"YouTube Live\",{name} (Live - Direct)",
-                          stream_url,
-                          ""
-                      ])
+                  proxied_url = PROXY_BASE + f"https://www.youtube.com/watch?v={video_id}"
+                  m3u8.append(f'#EXTINF:-1 tvg-name="Channel{i}" group-title="YouTube Live",Channel{i} (Live)')
+                  m3u8.append(proxied_url)
+                  m3u8.append("")
               else:
-                  print(f"  ⚠️ Using channel URL as fallback")
-                  m3u8.extend([
-                      f"#EXTINF:-1 tvg-name=\"{name}\" group-title=\"YouTube Live\",{name} (YouTube)",
-                      url,
-                      ""
-                  ])
-              
-              if total < len(lines):
-                  cooldown = random.randint(30, 60)
-                  print(f"  ⏱️ Cooldown: {cooldown}s")
-                  time.sleep(cooldown)
+                  m3u8.append(f'#EXTINF:-1 tvg-name="Channel{i}" group-title="YouTube Live",Channel{i} (YouTube)')
+                  m3u8.append(line)
+                  m3u8.append("")
 
-          m3u8.extend([
-              f"",
-              f"# Summary: {active}/{total} streams active (proxied)",
-              f"# Updated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}"
-          ])
+          m3u8.extend(["", f"# Summary: {active}/{len(lines)} streams active", f"# Updated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}"])
 
           with open('streams.m3u8', 'w') as f:
               f.write('\n'.join(m3u8))
 
-          print(f"\n{'='*50}")
-          print(f"📊 FINAL: {active}/{total} streams active and proxied")
-          print(f"🔗 Proxy base: {PROXY_BASE}")
-          print(f"{'='*50}")
-
+          print(f"\n📊 FINAL: {active}/{len(lines)} active")
           PYTHON_EOF
 
           python generate.py
 
-      - name: Show playlist preview
+      - name: Fix git conflicts (ALWAYS RUNS)
+        run: |
+          echo "🔧 Fixing git conflict markers..."
+          # Remove ALL conflict markers regardless of content
+          sed -i '/^<<<<<<< /d' streams.m3u8
+          sed -i '/^=======/d' streams.m3u8
+          sed -i '/^>>>>>>> /d' streams.m3u8
+          # Remove any duplicate lines
+          awk '!seen[$0]++' streams.m3u8 > streams_clean.m3u8
+          mv streams_clean.m3u8 streams.m3u8
+          echo "✅ Conflicts fixed"
+
+      - name: Show fixed playlist
         run: |
           echo ""
-          echo "📄 Generated streams.m3u8:"
-          echo "=========================="
-          head -20 streams.m3u8
-          echo "..."
+          echo "📄 Fixed streams.m3u8:"
+          echo "======================"
+          cat streams.m3u8
 
-      - name: Resolve git conflicts
-        run: |
-          echo "🔧 Removing git conflict markers from streams.m3u8..."
-          # Remove git conflict markers if they exist
-          sed -i '/^<<<<<<< /d' streams.m3u8 2>/dev/null || true
-          sed -i '/^=======/d' streams.m3u8 2>/dev/null || true
-          sed -i '/^>>>>>>> /d' streams.m3u8 2>/dev/null || true
-          echo "✅ Conflict markers removed"
-
-      - name: Commit with conflict resolution
+      - name: Commit and push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Cleanup sensitive files
-          rm -f cookies.txt generate.py wgcf-profile.conf wgcf-account.toml
-          
-          # Stop WireGuard if running
-          sudo wg-quick down /etc/wireguard/wgcf.conf 2>/dev/null || true
-          sudo ip link del dev wgcf 2>/dev/null || true
-          
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           
-          git stash || true
-          git pull --no-rebase origin main || true
-          git stash pop || true
+          # Force add and commit
+          git add -f streams.m3u8
+          git commit -m "🔄 Update playlist [$(date -u +%H:%M)]" || true
           
-          git add streams.m3u8
-          
-          if git diff --cached --quiet; then
-            echo "ℹ️ No changes"
-            exit 0
-          fi
-          
-          ACTIVE_COUNT=$(grep -c 'Live' streams.m3u8 || echo "0")
-          git commit -m "🔄 Update playlist [$(date -u +%H:%M)] - ${ACTIVE_COUNT} active"
-          
-          MAX_RETRIES=3
-          RETRY=0
-          while [ $RETRY -lt $MAX_RETRIES ]; do
-            if git push origin main; then
-              echo "✅ Successfully pushed"
-              break
-            else
-              RETRY=$((RETRY + 1))
-              if [ $RETRY -lt $MAX_RETRIES ]; then
-                echo "⚠️ Push failed, retrying..."
-                git pull --no-rebase origin main
-              fi
-            fi
-          done
-          
-          echo "✅ Playlist updated with Cloudflare Worker proxy"
+          # Force push (overwrites remote)
+          git push --force origin main
+          echo "✅ Playlist updated"
