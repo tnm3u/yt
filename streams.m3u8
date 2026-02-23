@@ -1,24 +1,23 @@
 #EXTM3U
-# Generated: 2026-02-23 21:20:04 UTC
+# Generated: 2026-02-23 21:35:54 UTC
 # Total channels: 8
-# Proxy: Cloudflare Worker
 
-#EXTINF:-1 tvg-name="AriseNewsChannel" group-title="NIGERIA",AriseNewsChannel (Live - HD)
-https://yt-proxy.chidex4k43342.workers.dev/@AriseNewsChannel.m3u8
-#EXTINF:-1 tvg-name="TVCNewsNigeria" group-title="NIGERIA",TVCNewsNigeria (Live - HD)
-https://yt-proxy.chidex4k43342.workers.dev/@TVCNewsNigeria.m3u8
-#EXTINF:-1 tvg-name="ChannelsTelevision" group-title="NIGERIA",ChannelsTelevision (Live - HD)
-https://yt-proxy.chidex4k43342.workers.dev/@ChannelsTelevision.m3u8
-#EXTINF:-1 tvg-name="NewsCentralAfrica" group-title="NIGERIA",NewsCentralAfrica (Live - HD)
-https://yt-proxy.chidex4k43342.workers.dev/@NewsCentralAfrica.m3u8
-#EXTINF:-1 tvg-name="NTALive" group-title="NIGERIA",NTALive (Live - HD)
-https://yt-proxy.chidex4k43342.workers.dev/@NTALive.m3u8
-#EXTINF:-1 tvg-name="SilverbirdN24Live" group-title="NIGERIA",SilverbirdN24Live (Live - HD)
-https://yt-proxy.chidex4k43342.workers.dev/@SilverbirdN24Live.m3u8
-#EXTINF:-1 tvg-name="AITLivestream1" group-title="NIGERIA",AITLivestream1 (Error)
+#EXTINF:-1 tvg-name="AriseNewsChannel" group-title="YouTube Live",AriseNewsChannel (Live - HD)
+https://siteproxy.chidex4k43342.workers.dev/yourtube/4uHZdlX-DT4
+#EXTINF:-1 tvg-name="TVCNewsNigeria" group-title="YouTube Live",TVCNewsNigeria (Live - HD)
+https://siteproxy.chidex4k43342.workers.dev/yourtube/b-Yzp0l8cAM
+#EXTINF:-1 tvg-name="ChannelsTelevision" group-title="YouTube Live",ChannelsTelevision (Live - HD)
+https://siteproxy.chidex4k43342.workers.dev/yourtube/dIQNK5GYyDY
+#EXTINF:-1 tvg-name="NewsCentralAfrica" group-title="YouTube Live",NewsCentralAfrica (Live - HD)
+https://siteproxy.chidex4k43342.workers.dev/yourtube/puZ8rz7_4UY
+#EXTINF:-1 tvg-name="NTALive" group-title="YouTube Live",NTALive (Live - HD)
+https://siteproxy.chidex4k43342.workers.dev/yourtube/pn0I0Hxgv3g
+#EXTINF:-1 tvg-name="SilverbirdN24Live" group-title="YouTube Live",SilverbirdN24Live (Live - HD)
+https://siteproxy.chidex4k43342.workers.dev/yourtube/FKQV9ArQvaM
+#EXTINF:-1 tvg-name="AITLivestream1" group-title="YouTube Live",AITLivestream1 (YouTube)
 https://www.youtube.com/@AITLivestream1/live
-#EXTINF:-1 tvg-name="VOP903FM" group-title="NIGERIA",VOP903FM (Live - HD)
-https://yt-proxy.chidex4k43342.workers.dev/@VOP903FM.m3u8
+#EXTINF:-1 tvg-name="VOP903FM" group-title="YouTube Live",VOP903FM (Live - HD)
+https://siteproxy.chidex4k43342.workers.dev/yourtube/DAiqbRbwnUI
 # Summary: 7/8 streams active
-# Quality: 1080p:0 720p:0 480p:0
-# Updated: 2026-02-23 21:21:30 UTC
+# Quality: 0x1080p, 0x720p, 0x480p
+# Updated: 2026-02-23 21:37:13 UTC
