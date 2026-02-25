@@ -250,66 +250,40 @@ jobs:
                   h1 { color: #333; }
                   .btn { background: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; display: inline-block; margin: 10px 0; border-radius: 5px; }
                   pre { background: #f5f5f5; padding: 10px; border-radius: 5px; overflow-x: auto; }
-                  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
-                  .stat { background: #e8f5e9; padding: 15px; border-radius: 5px; text-align: center; }
-                  .stat-value { font-size: 2em; font-weight: bold; color: #4CAF50; }
               </style>
           </head>
           <body>
               <div class="container">
                   <h1>📺 Live News Streams</h1>
-                  
-                  <div class="stats">
-                      <div class="stat">
-                          <div class="stat-value" id="active">0</div>
-                          <div>Active</div>
-                      </div>
-                      <div class="stat">
-                          <div class="stat-value" id="total">0</div>
-                          <div>Total</div>
-                      </div>
-                      <div class="stat">
-                          <div class="stat-value" id="errors">0</div>
-                          <div>Errors</div>
-                      </div>
-                  </div>
-                  
                   <p>Playlist URL (for VLC/Streamlink):</p>
                   <pre>https://uticap.github.io/Youtube-to-M3u8/streams.m3u8</pre>
                   <a href="streams.m3u8" class="btn">▶️ Download Playlist</a>
-                  
                   <h3>How to use:</h3>
                   <pre>streamlink --player=vlc https://uticap.github.io/Youtube-to-M3u8/streams.m3u8 best</pre>
                   <p>Or open the playlist directly in VLC (File → Open Network Stream)</p>
-                  
-                  <p><small>Updated: <span id="timestamp"></span></small></p>
               </div>
-              
-              <script>
-                  fetch('stats.txt')
-                      .then(r => r.text())
-                      .then(data => {
-                          const stats = {};
-                          data.split('\n').forEach(line => {
-                              const [key, value] = line.split('=');
-                              if (key && value) stats[key] = value;
-                          });
-                          document.getElementById('active').textContent = stats.active || '0';
-                          document.getElementById('total').textContent = stats.total || '0';
-                          document.getElementById('errors').textContent = stats.error_channels ? stats.error_channels.split(',').length : '0';
-                          document.getElementById('timestamp').textContent = new Date().toLocaleString();
-                      });
-              </script>
           </body>
           </html>
           EOF
 
-      - name: Commit and push with retry
+      - name: Force push with conflict resolution
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Backup generated files
+          cp streams.m3u8 streams.m3u8.backup 2>/dev/null || true
+          cp stats.txt stats.txt.backup 2>/dev/null || true
+          
+          # Fetch latest and reset to remote (clean slate)
+          git fetch origin main
+          git reset --hard origin/main || echo "No remote branch yet"
+          
+          # Restore our files
+          mv streams.m3u8.backup streams.m3u8 2>/dev/null || true
+          mv stats.txt.backup stats.txt 2>/dev/null || true
           
           git add -f streams.m3u8 stats.txt .nojekyll index.html
           
@@ -318,27 +292,11 @@ jobs:
             exit 0
           fi
           
-          # Pull latest changes first
-          echo "📥 Pulling latest changes..."
-          git pull --rebase origin main || true
+          git commit -m "🔄 Update playlist [$(date -u +%H:%M)]"
           
-          git commit -m "🔄 Update playlist [$(date -u +%H:%M)] - ${{ steps.generate.outputs.active }} active"
-          
-          # Push with retry
-          MAX_RETRIES=3
-          for i in $(seq 1 $MAX_RETRIES); do
-            echo "📤 Push attempt $i/$MAX_RETRIES..."
-            if git push; then
-              echo "✅ Successfully pushed"
-              exit 0
-            else
-              echo "⚠️ Push failed, pulling latest changes..."
-              git pull --rebase origin main || true
-            fi
-          done
-          
-          echo "❌ Failed to push after $MAX_RETRIES attempts"
-          exit 1
+          # Force push (overwrites remote with our version)
+          git push --force origin main
+          echo "✅ Successfully force pushed"
 
       - name: Send Telegram notification
         if: success() && github.event_name == 'workflow_dispatch'
