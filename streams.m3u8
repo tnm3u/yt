@@ -1,6 +1,6 @@
 #EXTM3U
 #EXT-X-VERSION:3
-# Generated: 2026-02-25 09:55:32 UTC
+# Generated: 2026-02-25 12:55:33 UTC
 # Total channels: 12
 # Use with Streamlink: streamlink --player=vlc THIS_URL best
 
@@ -45,5 +45,5 @@ https://www.youtube.com/@AdomTVGH/live
 # Active: None
 # Offline: 0
 # Errors: 12
-# Next refresh: 2026-02-25 15:56:33 UTC
-# Updated: 2026-02-25 09:56:33 UTC
+# Next refresh: 2026-02-25 18:56:36 UTC
+# Updated: 2026-02-25 12:56:36 UTC
