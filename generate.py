@@ -17,7 +17,7 @@ QUALITY_PROFILES = {
     'audio': {'format': 'bestaudio', 'suffix': '[Audio]', 'priority': []}
 }
 
-# Country mapping for channels (you can customize this)
+# Country mapping for channels (EXPANDED FOR BETTER DETECTION)
 CHANNEL_COUNTRIES = {
     # Nigerian channels
     'arise': 'NG',
@@ -27,11 +27,18 @@ CHANNEL_COUNTRIES = {
     'ait': 'NG',
     'silverbird': 'NG',
     'nigerian': 'NG',
+    'nigeria': 'NG',           # CRITICAL: catches "Nigeria" in channel name
     'lagos': 'NG',
     'abuja': 'NG',
+    'channelstv': 'NG',
+    'plustv': 'NG',
+    'wazobia': 'NG',
+    'coolfm': 'NG',
+    'naija': 'NG',
     
     # Ghanaian channels
     'ghana': 'GH',
+    'ghanaian': 'GH',
     'joy': 'GH',
     'adom': 'GH',
     'multitv': 'GH',
@@ -40,9 +47,12 @@ CHANNEL_COUNTRIES = {
     'atv': 'GH',
     'tv3': 'GH',
     'cititv': 'GH',
+    'metro': 'GH',
+    'peace': 'GH',
+    'angel': 'GH',
     
-    # Default
-    'default': 'US'  # United States as fallback
+    # Default fallback
+    'default': 'US'
 }
 # =========================================
 
@@ -83,11 +93,23 @@ class YouTubePlaylistGenerator:
         """Detect which country the channel belongs to based on name"""
         channel_name_lower = channel_name.lower()
         
+        # First check for explicit country names (MOST IMPORTANT)
+        if 'nigeria' in channel_name_lower or 'nigerian' in channel_name_lower:
+            print(f"  🌍 Found 'Nigeria' in name, using NG")
+            return 'NG'
+        
+        if 'ghana' in channel_name_lower or 'ghanaian' in channel_name_lower:
+            print(f"  🌍 Found 'Ghana' in name, using GH")
+            return 'GH'
+        
+        # Then check keywords
         for keyword, country in CHANNEL_COUNTRIES.items():
-            if keyword in channel_name_lower and keyword != 'default':
-                print(f"  🌍 Detected {country} channel: {keyword}")
+            if keyword in channel_name_lower and keyword not in ['default', 'nigeria', 'ghana']:
+                print(f"  🌍 Detected {country} channel from keyword: {keyword}")
                 return country
         
+        # Default fallback
+        print(f"  🌍 No country detected, using default: {CHANNEL_COUNTRIES['default']}")
         return CHANNEL_COUNTRIES['default']
     
     def fetch_channel_logo(self, channel_id, channel_name):
@@ -136,7 +158,7 @@ class YouTubePlaylistGenerator:
         country = self.detect_channel_country(channel_name)
         print(f"  🌍 Using geo-bypass for country: {country}")
         
-        # Enhanced yt-dlp options with geo-bypass
+        # ENHANCED yt-dlp options with geo-bypass
         ydl_opts = {
             'cookies': self.cookies_file,
             'quiet': True,
@@ -149,14 +171,18 @@ class YouTubePlaylistGenerator:
                     'skip': ['webpage', 'configs']
                 }
             },
-            # ENHANCED GEO-BYPASS FOR ALL REGIONS
+            # GEO-BYPASS SETTINGS
             'geo_bypass': True,
             'geo_bypass_country': country,
             'xff': country,
+            
+            # ADDITIONAL HEADERS TO MIMIC LOCAL VIEWER
             'headers': {
-                'X-Forwarded-For': f'{country.lower()}-proxy',
+                'X-Forwarded-For': f'{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}.{random.randint(1,255)}',
                 'Accept-Language': f'en-{country},en;q=0.9',
-            }
+                'Origin': 'https://www.youtube.com',
+                'Referer': 'https://www.youtube.com/',
+            },
         }
         
         try:
@@ -518,6 +544,8 @@ class YouTubePlaylistGenerator:
             background: #e3f2fd;
             color: #1976d2;
         }
+        .badge-ng { background: #e8f5e8; color: #2e7d32; }
+        .badge-gh { background: #fff3e0; color: #bf360c; }
         @media (max-width: 768px) {
             .channel-grid { grid-template-columns: 1fr; }
         }
@@ -545,10 +573,11 @@ class YouTubePlaylistGenerator:
         for ch in channels:
             filename = ch['file'].replace('channels/', '')
             country = ch.get('country', 'Unknown')
+            badge_class = f"badge-{country.lower()}" if country in ['NG', 'GH'] else ""
             html += f"""
                 <div class="channel-card">
                     <div class="channel-name">{ch['name']}</div>
-                    <div class="channel-country"><span class="badge">{country}</span></div>
+                    <div class="channel-country"><span class="badge {badge_class}">{country}</span></div>
                     <div class="channel-quality">🔴 LIVE • {ch['quality']}</div>
                     <div>
                         <a href="{filename}" class="btn">▶️ Play</a>
