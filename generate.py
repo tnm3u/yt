@@ -23,11 +23,14 @@ class YouTubePlaylistGenerator:
         self.cookies_file = cookies_file
         self.cache_file = '.channel_cache.json'
         self.logos_dir = 'logos'
+        self.channels_dir = 'channels'  # New directory for individual channel files
         self.load_cache()
         
-        # Create logos directory
-        if not os.path.exists(self.logos_dir):
-            os.makedirs(self.logos_dir)
+        # Create directories
+        for directory in [self.logos_dir, self.channels_dir]:
+            if not os.path.exists(directory):
+                os.makedirs(directory)
+                print(f"📁 Created directory: {directory}/")
     
     def load_cache(self):
         """Load cached channel data"""
@@ -41,6 +44,13 @@ class YouTubePlaylistGenerator:
         """Save channel data to cache"""
         with open(self.cache_file, 'w') as f:
             json.dump(self.cache, f)
+    
+    def safe_filename(self, name):
+        """Convert channel name to safe filename"""
+        # Remove special characters and replace spaces
+        safe = re.sub(r'[^\w\s-]', '', name).strip()
+        safe = re.sub(r'[-\s]+', '_', safe)
+        return safe.lower()
     
     def fetch_channel_logo(self, channel_id, channel_name):
         """Fetch and cache channel logo"""
@@ -105,6 +115,7 @@ class YouTubePlaylistGenerator:
                 channel_id = info.get('channel_id', video_id)
                 title = info.get('title', 'Unknown')
                 channel_name = info.get('channel', 'Unknown')
+                channel_url = info.get('channel_url', url)
                 
                 # Clean channel name for filename
                 clean_name = re.sub(r'[^\w\s-]', '', channel_name).strip()
@@ -113,6 +124,7 @@ class YouTubePlaylistGenerator:
                 self.cache['channels'][channel_id] = {
                     'name': channel_name,
                     'video_id': video_id,
+                    'channel_url': channel_url,
                     'last_seen': datetime.now().isoformat()
                 }
                 
@@ -126,7 +138,8 @@ class YouTubePlaylistGenerator:
                         'video_id': video_id,
                         'channel_id': channel_id,
                         'name': clean_name,
-                        'title': title
+                        'title': title,
+                        'channel_url': channel_url
                     }
                 
                 formats = info.get('formats', [])
@@ -135,6 +148,10 @@ class YouTubePlaylistGenerator:
                 quality_streams = {}
                 
                 for profile_name, profile in QUALITY_PROFILES.items():
+                    # Skip audio for now (handle separately)
+                    if profile_name == 'audio':
+                        continue
+                    
                     # Filter video formats
                     video_formats = [
                         f for f in formats 
@@ -183,6 +200,7 @@ class YouTubePlaylistGenerator:
                     'channel_id': channel_id,
                     'name': clean_name,
                     'title': title,
+                    'channel_url': channel_url,
                     'streams': quality_streams,
                     'logo': logo_path
                 }
@@ -190,6 +208,231 @@ class YouTubePlaylistGenerator:
         except Exception as e:
             print(f"  ⚠️ Error: {str(e)[:150]}")
             return None
+    
+    def generate_individual_playlists(self, channels_data):
+        """Generate individual M3U8 files for each channel"""
+        individual_channels = []
+        
+        for channel in channels_data:
+            if channel.get('status') == 'live':
+                channel_name = channel.get('name', 'unknown')
+                channel_id = channel.get('channel_id', '')
+                
+                # Create safe filename
+                safe_name = self.safe_filename(channel_name)
+                filename = f"{self.channels_dir}/{safe_name}.m3u8"
+                
+                # Get best quality stream (prefer HD)
+                main_stream = channel.get('streams', {}).get('hd', {})
+                if not main_stream:
+                    # Fallback to any stream
+                    for s in channel.get('streams', {}).values():
+                        main_stream = s
+                        break
+                
+                if main_stream:
+                    quality_tag = main_stream.get('quality_tag', '')
+                    logo_attr = f' tvg-logo="{channel["logo"]}"' if channel.get('logo') else ''
+                    
+                    with open(filename, 'w', encoding='utf-8') as f:
+                        f.write(f"""#EXTM3U
+#EXT-X-VERSION:3
+# Channel: {channel_name}
+# ID: {channel_id}
+# Quality: {quality_tag}
+# Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}
+# URL expires: ~6 hours from generation
+
+#EXTINF:-1 tvg-id="{channel_id}"{logo_attr} tvg-name="{channel_name}" group-title="Individual",{channel_name} [{quality_tag}]
+{main_stream['url']}
+""")
+                    print(f"  ✅ Individual: {filename}")
+                    
+                    individual_channels.append({
+                        'name': channel_name,
+                        'file': filename,
+                        'id': channel_id,
+                        'quality': quality_tag,
+                        'url': main_stream['url']
+                    })
+                else:
+                    # Offline or error channel - create fallback
+                    safe_name = self.safe_filename(channel_name)
+                    filename = f"{self.channels_dir}/{safe_name}.m3u8"
+                    
+                    with open(filename, 'w', encoding='utf-8') as f:
+                        f.write(f"""#EXTM3U
+#EXT-X-VERSION:3
+# Channel: {channel_name}
+# Status: OFFLINE
+# Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}
+
+#EXTINF:-1 tvg-name="{channel_name}",{channel_name} [OFFLINE - Click for YouTube page]
+{channel.get('channel_url', 'https://youtube.com')}
+""")
+                    print(f"  ⚠️ Individual (offline): {filename}")
+        
+        # Save list of individual channels
+        with open(f"{self.channels_dir}/channels.json", 'w') as f:
+            json.dump({
+                'generated': datetime.now().isoformat(),
+                'count': len(individual_channels),
+                'channels': individual_channels
+            }, f, indent=2)
+        
+        # Generate HTML index for individual channels
+        self.generate_channels_html(individual_channels)
+        
+        return individual_channels
+    
+    def generate_channels_html(self, channels):
+        """Generate an HTML index page for all individual channels"""
+        html = """<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📺 Individual Channel Streams</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 2em; margin-bottom: 10px; }
+        .content { padding: 30px; }
+        .channel-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .channel-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            border-left: 4px solid #4CAF50;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .channel-card:hover { transform: translateY(-2px); }
+        .channel-name {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .channel-quality {
+            color: #4CAF50;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+        .btn {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+        .btn:hover { background: #45a049; }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #4CAF50;
+            color: #4CAF50;
+        }
+        .btn-outline:hover {
+            background: #4CAF50;
+            color: white;
+        }
+        .footer {
+            background: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #666;
+            border-top: 1px solid #e0e0e0;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            background: #d4edda;
+            color: #155724;
+        }
+        @media (max-width: 768px) {
+            .channel-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📺 Individual Channel Streams</h1>
+            <p>Direct M3U8 links for each channel</p>
+        </div>
+        
+        <div class="content">
+            <div style="margin-bottom: 20px;">
+                <a href="../streams.m3u8" class="btn">📋 Main Playlist</a>
+                <a href="../streams_hd.m3u8" class="btn">🎥 HD Playlist</a>
+                <a href="../streams_mobile.m3u8" class="btn">📱 Mobile Playlist</a>
+            </div>
+            
+            <h2 style="margin-bottom: 20px;">Available Channels ({} live)</h2>
+            <div class="channel-grid">
+""".format(len(channels))
+        
+        for ch in channels:
+            filename = ch['file'].replace('channels/', '')
+            html += f"""
+                <div class="channel-card">
+                    <div class="channel-name">{ch['name']}</div>
+                    <div class="channel-quality">🔴 LIVE • {ch['quality']}</div>
+                    <div>
+                        <a href="{filename}" class="btn">▶️ Play M3U8</a>
+                        <a href="{filename}" download class="btn btn-outline">📥 Download</a>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <small>Copy URL:</small><br>
+                        <code style="font-size: 0.8em;">../channels/{filename}</code>
+                    </div>
+                </div>"""
+        
+        html += """
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>🔄 Refreshes every 6 hours • URLs expire ~6 hours</p>
+            <p>⏰ Last updated: {}</p>
+        </div>
+    </div>
+</body>
+</html>""".format(datetime.now().strftime('%Y-%m-%d %H:%M UTC'))
+        
+        with open(f"{self.channels_dir}/index.html", 'w', encoding='utf-8') as f:
+            f.write(html)
+        
+        print(f"✅ Generated channels index: {self.channels_dir}/index.html")
     
     def generate_epg(self, channels_data):
         """Generate XMLTV EPG file"""
@@ -253,6 +496,7 @@ class YouTubePlaylistGenerator:
             "#EXT-X-VERSION:3",
             f"# Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}",
             f"# Total channels: {len(all_channels)}",
+            f"# Individual channels: https://uticap.github.io/Youtube-to-M3u8/channels/",
             ""
         ]
         
@@ -266,7 +510,8 @@ class YouTubePlaylistGenerator:
             'offline': 0,
             'error': 0,
             'qualities': {'1080p': 0, '720p': 0, '480p': 0, 'other': 0},
-            'by_category': {}
+            'by_category': {},
+            'individual_channels': []
         }
         
         # Process each channel
@@ -321,9 +566,17 @@ class YouTubePlaylistGenerator:
                     )
                     playlists['main'].append(main_stream['url'])
                     playlists['main'].append("")
+                    
+                    # Add to individual channels list
+                    safe_name = self.safe_filename(channel_name)
+                    stats['individual_channels'].append({
+                        'name': channel_name,
+                        'file': f"channels/{safe_name}.m3u8",
+                        'quality': quality_tag
+                    })
                 
                 # Add to quality-specific playlists
-                for profile_name in ['hd', 'mobile', 'audio']:
+                for profile_name in ['hd', 'mobile']:
                     if profile_name in channel.get('streams', {}):
                         stream = channel['streams'][profile_name]
                         suffix = QUALITY_PROFILES[profile_name]['suffix']
@@ -362,6 +615,7 @@ class YouTubePlaylistGenerator:
             f"# Summary: {stats['live']}/{stats['total']} streams active",
             f"# Quality: {stats['qualities']['1080p']}x1080p, {stats['qualities']['720p']}x720p",
             f"# Categories: {', '.join([f'{k}:{v}' for k, v in stats['by_category'].items()])}",
+            f"# Individual channels: https://uticap.github.io/Youtube-to-M3u8/channels/",
             f"# Updated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}"
         ]
         
@@ -429,6 +683,10 @@ def main():
     print("\n🎬 Generating playlists...")
     stats, playlists = generator.generate_playlists(channels_data)
     
+    # Generate individual channel playlists
+    print("\n📺 Generating individual channel playlists...")
+    individual_channels = generator.generate_individual_playlists(channels_data)
+    
     # Save cache
     generator.save_cache()
     
@@ -452,6 +710,9 @@ def main():
     print("   - streams_audio.m3u8 (Audio only)")
     print("   - epg.xml (TV Guide)")
     print("   - stats.json (Detailed statistics)")
+    print(f"   - channels/ (Individual channel files - {len(individual_channels)} files)")
+    print(f"\n🌐 Individual Channels URL:")
+    print(f"   https://uticap.github.io/Youtube-to-M3u8/channels/")
     print(f"{'='*50}")
 
 if __name__ == "__main__":
