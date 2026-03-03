@@ -148,6 +148,9 @@ class YouTubePlaylistGenerator:
             'quiet': True,
             'no_warnings': True,
             'socket_timeout': 30,
+            'playlistreverse': True,
+            'playlist_items': '1',
+            'match_filter': 'is_live',
             'retries': 5,
             'extractor_args': {
                 'youtube': {
