@@ -1,2 +1,48 @@
 <?xml version="1.0" encoding="utf-8"?>
-<tv generator-info-name="YouTube Live EPG Generator" date="20260305070246 "/>
+<tv generator-info-name="YouTube Live EPG Generator" date="20260305091806 ">
+  <channel id="UCt4t-jeY85JegMlZ-E5UWtA">
+    <display-name>Aaj Tak</display-name>
+    <icon src="logos/UCt4t-jeY85JegMlZ-E5UWtA.jpg"/>
+  </channel>
+  <programme start="20260305091806 +0000" stop="20260305101806 +0000" channel="UCt4t-jeY85JegMlZ-E5UWtA">
+    <title>Nitish Kumar Resignation LIVE: नीतीश कुमार ने छोड़ी कुर्सी, पहली बार बिहार में होगा BJP का CM? 2026-03-05 09:17</title>
+    <desc>Live YouTube stream from Aaj Tak</desc>
+    <category>Live</category>
+  </programme>
+  <channel id="UCRWFSbif-RFENbBrSiez1DA">
+    <display-name>ABP NEWS</display-name>
+    <icon src="logos/UCRWFSbif-RFENbBrSiez1DA.jpg"/>
+  </channel>
+  <programme start="20260305091806 +0000" stop="20260305101806 +0000" channel="UCRWFSbif-RFENbBrSiez1DA">
+    <title>Nitish Kumar Big Breaking News LIVE: नीतीश कुमार के साथ हो गया 'खेला'! | Bihar Politics | JDU | RJD 2026-03-05 09:17</title>
+    <desc>Live YouTube stream from ABP NEWS</desc>
+    <category>Live</category>
+  </programme>
+  <channel id="UClFe5TPbW1MVrOPpbNHTDoQ">
+    <display-name>BIGTV24X7</display-name>
+    <icon src="logos/UClFe5TPbW1MVrOPpbNHTDoQ.jpg"/>
+  </channel>
+  <programme start="20260305091806 +0000" stop="20260305101806 +0000" channel="UClFe5TPbW1MVrOPpbNHTDoQ">
+    <title>Big TV Live | Malayalam News Live | Big Breaking Malayalam | Israel | America 2026-03-05 09:17</title>
+    <desc>Live YouTube stream from BIGTV24X7</desc>
+    <category>Live</category>
+  </programme>
+  <channel id="UCkBY0aHJP9BwjZLDYxAQrKg">
+    <display-name>cricketcomau</display-name>
+    <icon src="logos/UCkBY0aHJP9BwjZLDYxAQrKg.jpg"/>
+  </channel>
+  <programme start="20260305091806 +0000" stop="20260305101806 +0000" channel="UCkBY0aHJP9BwjZLDYxAQrKg">
+    <title>Cricket Gold - 24/7 LIVE Channel 2026-03-05 09:17</title>
+    <desc>Live YouTube stream from cricketcomau</desc>
+    <category>Live</category>
+  </programme>
+  <channel id="UCWk-7Yosyvzln9ZzJg8BvVg">
+    <display-name>Rajasthan Patrika</display-name>
+    <icon src="logos/UCWk-7Yosyvzln9ZzJg8BvVg.jpg"/>
+  </channel>
+  <programme start="20260305091806 +0000" stop="20260305101806 +0000" channel="UCWk-7Yosyvzln9ZzJg8BvVg">
+    <title>Patrika TV LIVE | Rajasthan Patrika | Super Fast News LIVE | Top News LIVE | Aaj Ki Taaza Khabar 2026-03-05 09:18</title>
+    <desc>Live YouTube stream from Rajasthan Patrika</desc>
+    <category>Live</category>
+  </programme>
+</tv>
