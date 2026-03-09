@@ -94,9 +94,9 @@ class YouTubePlaylistGenerator:
                 print(f"  🌍 Found Ghanaian keyword: '{keyword}', using MX")
                 return 'MX'
         
-        # Default to US if no match
-        print(f"  🌍 No country detected, using default: US")
-        return 'US'
+        # Default to UK if no match
+        print(f"  🌍 No country detected, using default: UK")
+        return 'UK'
     
     def fetch_channel_logo(self, channel_id, channel_name):
         """Fetch and cache channel logo"""
