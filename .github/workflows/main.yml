@@ -31,44 +31,66 @@ jobs:
 
       - name: Setup Python & dependencies
         run: |
-          pip install --upgrade pip yt-dlp requests
-          echo "yt-dlp: $(yt-dlp --version)"
+          python3 -m pip install --upgrade pip
+          pip install yt-dlp requests
+          echo "yt-dlp version: $(yt-dlp --version)"
 
+      # -----------------------------
+      # OPTIONAL: Cloudflare WARP
+      # -----------------------------
       - name: Setup Cloudflare WARP
         continue-on-error: true
         run: |
+          echo "Setting up WARP..."
           sudo apt-get update -qq
           sudo apt-get install -y -qq wireguard-tools iptables
+
           curl -fsSL https://github.com/ViRb3/wgcf/releases/download/v2.2.22/wgcf_2.2.22_linux_amd64 -o wgcf
           chmod +x wgcf
           sudo mv wgcf /usr/local/bin/
-          wgcf register --accept-tos
-          wgcf generate
-          sudo mkdir -p /etc/wireguard
-          sudo cp wgcf-profile.conf /etc/wireguard/wgcf.conf
-          sudo wg-quick up /etc/wireguard/wgcf.conf || true
 
-      - name: Create cookies file
+          wgcf register --accept-tos || true
+          wgcf generate || true
+
+          sudo mkdir -p /etc/wireguard
+          sudo cp wgcf-profile.conf /etc/wireguard/wgcf.conf 2>/dev/null || true
+
+          sudo wg-quick up /etc/wireguard/wgcf.conf || echo "WARP failed, continuing without VPN"
+
+      # -----------------------------
+      # OPTIONAL COOKIES (FIXED)
+      # -----------------------------
+      - name: Create cookies file (optional)
         env:
           COOKIES: ${{ secrets.COOKIES_TXT }}
         run: |
           if [ -z "$COOKIES" ]; then
-            echo "COOKIES_TXT secret missing"
-            exit 1
+            echo "No cookies provided → running without cookies"
+          else
+            echo "Cookies detected → creating cookies.txt"
+            echo "$COOKIES" > cookies.txt
           fi
-          echo "$COOKIES" > cookies.txt
 
+      # -----------------------------
+      # DIRECTORIES
+      # -----------------------------
       - name: Create directories
         run: |
           mkdir -p logos channels
           touch logos/.gitkeep channels/.gitkeep
 
+      # -----------------------------
+      # RUN SCRIPT
+      # -----------------------------
       - name: Run playlist generator
         run: |
           echo "Starting generation..."
-          python generate.py
+          python3 generate.py
           echo "Generation complete"
 
+      # -----------------------------
+      # COMMIT CHANGES
+      # -----------------------------
       - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
@@ -81,10 +103,14 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Update playlist - $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git commit -m "Auto update playlist - $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
 
+      # -----------------------------
+      # CLEANUP
+      # -----------------------------
       - name: Cleanup sensitive files
         if: always()
         run: |
+          echo "Cleaning up..."
           rm -f cookies.txt wgcf-profile.conf wgcf-account.toml 2>/dev/null || true
