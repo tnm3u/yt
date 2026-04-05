@@ -1,84 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
-<tv generator-info-name="YouTube Live EPG Generator" date="20260404152155 ">
-  <channel id="UCt4t-jeY85JegMlZ-E5UWtA">
-    <display-name>Aaj Tak</display-name>
-    <icon src="logos/UCt4t-jeY85JegMlZ-E5UWtA.jpg"/>
+<tv generator-info-name="YouTube Live EPG Generator" date="20260405204706 ">
+  <channel id="UC8Z-VjXBtDJTvq6aqkIskPg">
+    <display-name>Polimer News</display-name>
+    <icon src="logos/UC8Z-VjXBtDJTvq6aqkIskPg.jpg"/>
   </channel>
-  <programme start="20260404152155 +0000" stop="20260404162155 +0000" channel="UCt4t-jeY85JegMlZ-E5UWtA">
-    <title>Aaj Tak LIVE TV: US Iran Israel War Updates | Donald Trump | PM Modi | BJP | Hindi News 2026-04-04 15:20</title>
-    <desc>Live YouTube stream from Aaj Tak</desc>
+  <programme start="20260405204706 +0000" stop="20260405214706 +0000" channel="UC8Z-VjXBtDJTvq6aqkIskPg">
+    <title>🔴LIVE: தவெக தலைவர் விஜய் பிரச்சாரம் நாளை ரத்து | TVK Vijay | N. Anand | Sengottaiyan | Aadhav Arjuna 2026-04-05 20:45</title>
+    <desc>Live YouTube stream from Polimer News</desc>
     <category>Live</category>
   </programme>
-  <channel id="UCRWFSbif-RFENbBrSiez1DA">
-    <display-name>ABP NEWS</display-name>
-    <icon src="logos/UCRWFSbif-RFENbBrSiez1DA.jpg"/>
+  <channel id="UC-JFyL0zDFOsPMpuWu39rPA">
+    <display-name>Thanthi TV</display-name>
+    <icon src="logos/UC-JFyL0zDFOsPMpuWu39rPA.jpg"/>
   </channel>
-  <programme start="20260404152155 +0000" stop="20260404162155 +0000" channel="UCRWFSbif-RFENbBrSiez1DA">
-    <title>ABP NEWS LIVE: Iran US Israel War Updates | Donald Trump | PM Modi | Rahul Gandhi | Elections 2026 2026-04-04 15:21</title>
-    <desc>Live YouTube stream from ABP NEWS</desc>
+  <programme start="20260405204706 +0000" stop="20260405214706 +0000" channel="UC-JFyL0zDFOsPMpuWu39rPA">
+    <title>🔴LIVE:Thanthi TV LIVE | CMStalin | EPS | TVK Vijay | Israel-Iran War | GasCylinder | TNElection2026 2026-04-05 20:46</title>
+    <desc>Live YouTube stream from Thanthi TV</desc>
     <category>Live</category>
   </programme>
-  <channel id="UClFe5TPbW1MVrOPpbNHTDoQ">
-    <display-name>BIGTV24X7</display-name>
-    <icon src="logos/UClFe5TPbW1MVrOPpbNHTDoQ.jpg"/>
+  <channel id="UCtbo6_eDG7zEtaOtcSltJkA">
+    <display-name>NewsTamil 24X7</display-name>
+    <icon src="logos/UCtbo6_eDG7zEtaOtcSltJkA.jpg"/>
   </channel>
-  <programme start="20260404152155 +0000" stop="20260404162155 +0000" channel="UClFe5TPbW1MVrOPpbNHTDoQ">
-    <title>BigTv24x7 Official Live | Malayalam News Live | Kerala Election 2026 2026-04-04 15:21</title>
-    <desc>Live YouTube stream from BIGTV24X7</desc>
+  <programme start="20260405204706 +0000" stop="20260405214706 +0000" channel="UCtbo6_eDG7zEtaOtcSltJkA">
+    <title>🔴LIVE :விஜயின் நாளைய பிரச்சாரம் ரத்து..வெளியான முக்கிய தகவல்  | TVK VIJAY | Campaign 2026-04-05 20:46</title>
+    <desc>Live YouTube stream from NewsTamil 24X7</desc>
     <category>Live</category>
   </programme>
-  <channel id="UCWk-7Yosyvzln9ZzJg8BvVg">
-    <display-name>Rajasthan Patrika</display-name>
-    <icon src="logos/UCWk-7Yosyvzln9ZzJg8BvVg.jpg"/>
+  <channel id="UCYlh4lH762HvHt6mmiecyWQ">
+    <display-name>Sun News</display-name>
+    <icon src="logos/UCYlh4lH762HvHt6mmiecyWQ.jpg"/>
   </channel>
-  <programme start="20260404152155 +0000" stop="20260404162155 +0000" channel="UCWk-7Yosyvzln9ZzJg8BvVg">
-    <title>Patrika TV LIVE | Rajasthan Patrika | Super Fast News LIVE | Top News LIVE | Aaj Ki Taaza Khabar 2026-04-04 15:21</title>
-    <desc>Live YouTube stream from Rajasthan Patrika</desc>
+  <programme start="20260405204706 +0000" stop="20260405214706 +0000" channel="UCYlh4lH762HvHt6mmiecyWQ">
+    <title>🔴LIVE: Sun News | TN Election 2026 | Gas Cylinder Crisis | CM MK Stalin | Latest News | DMK | ADMK 2026-04-05 20:46</title>
+    <desc>Live YouTube stream from Sun News</desc>
     <category>Live</category>
   </programme>
-  <channel id="UCBi2mrWuNuyYy4gbM6fU18Q">
-    <display-name>ABC News</display-name>
-    <icon src="logos/UCBi2mrWuNuyYy4gbM6fU18Q.jpg"/>
+  <channel id="UC2ziCMHFPWkFHjocUMXT__Q">
+    <display-name>Sathiyam News</display-name>
+    <icon src="logos/UC2ziCMHFPWkFHjocUMXT__Q.jpg"/>
   </channel>
-  <programme start="20260404152155 +0000" stop="20260404162155 +0000" channel="UCBi2mrWuNuyYy4gbM6fU18Q">
-    <title>LIVE: ABC News Live - Saturday, April 4 | ABC News 2026-04-04 15:21</title>
-    <desc>Live YouTube stream from ABC News</desc>
+  <programme start="20260405204706 +0000" stop="20260405214706 +0000" channel="UC2ziCMHFPWkFHjocUMXT__Q">
+    <title>🔴LIVE: மருத்துவமனையில் டிரம்ப்?... அமெரிக்காவில் தீயாய் பரவிய வீடியோ 2026-04-05 20:46</title>
+    <desc>Live YouTube stream from Sathiyam News</desc>
     <category>Live</category>
   </programme>
-  <channel id="UCm7lHFkt2yB_WzL67aruVBQ">
-    <display-name>Hindustan Times</display-name>
-    <icon src="logos/UCm7lHFkt2yB_WzL67aruVBQ.jpg"/>
+  <channel id="UCXbufH95DIUqyAWSzeDI0JQ">
+    <display-name>Malaimurasu Tv 24X7</display-name>
+    <icon src="logos/UCXbufH95DIUqyAWSzeDI0JQ.jpg"/>
   </channel>
-  <programme start="20260404152155 +0000" stop="20260404162155 +0000" channel="UCm7lHFkt2yB_WzL67aruVBQ">
-    <title>LIVE | Massive US Airstrikes Fail? Missile City In Iran Remains Untouched | Trump | Mojtaba 2026-04-04 15:21</title>
-    <desc>Live YouTube stream from Hindustan Times</desc>
+  <programme start="20260405204706 +0000" stop="20260405214706 +0000" channel="UCXbufH95DIUqyAWSzeDI0JQ">
+    <title>🔴LIVE | Anbumani, EPS-க்கு நேரடி சவால் | பிரச்சாரத்தில் பிரேமலதா விட்ட வார்த்தையால் பரபரப்பு 2026-04-05 20:46</title>
+    <desc>Live YouTube stream from Malaimurasu Tv 24X7</desc>
     <category>Live</category>
   </programme>
-  <channel id="UCJg9wBPyKMNA5sRDnvzmkdg">
-    <display-name>LiveNOW from FOX</display-name>
-    <icon src="logos/UCJg9wBPyKMNA5sRDnvzmkdg.jpg"/>
+  <channel id="UCat88i6_rELqI_prwvjspRA">
+    <display-name>News18 Tamil Nadu</display-name>
+    <icon src="logos/UCat88i6_rELqI_prwvjspRA.jpg"/>
   </channel>
-  <programme start="20260404152155 +0000" stop="20260404162155 +0000" channel="UCJg9wBPyKMNA5sRDnvzmkdg">
-    <title>LIVE NEWS: Iran nuclear site hit, 2 US fighter jets downed, Artemis II mission updates &amp; more 2026-04-04 15:21</title>
-    <desc>Live YouTube stream from LiveNOW from FOX</desc>
-    <category>Live</category>
-  </programme>
-  <channel id="UCytSP0M0Jdnw6qIy3Y-nTig">
-    <display-name>NewsX Live</display-name>
-    <icon src="logos/UCytSP0M0Jdnw6qIy3Y-nTig.jpg"/>
-  </channel>
-  <programme start="20260404152155 +0000" stop="20260404162155 +0000" channel="UCytSP0M0Jdnw6qIy3Y-nTig">
-    <title>LIVE | US Fighter Jet Down in Iran, Afghanistan Earthquake Death Toll, Nashik Car Accident | NewsX 2026-04-04 15:21</title>
-    <desc>Live YouTube stream from NewsX Live</desc>
-    <category>Live</category>
-  </programme>
-  <channel id="UCvu9pKtF3Y8KaJVD-WMiOrg">
-    <display-name>NewsX World</display-name>
-    <icon src="logos/UCvu9pKtF3Y8KaJVD-WMiOrg.jpg"/>
-  </channel>
-  <programme start="20260404152155 +0000" stop="20260404162155 +0000" channel="UCvu9pKtF3Y8KaJVD-WMiOrg">
-    <title>Breaking LIVE : Strike Hits Mahshahr Petrochemical Zone in Iran’s Khuzestan Province | NewsX World 2026-04-04 15:21</title>
-    <desc>Live YouTube stream from NewsX World</desc>
+  <programme start="20260405204706 +0000" stop="20260405214706 +0000" channel="UCat88i6_rELqI_prwvjspRA">
+    <title>🔴LIVE | Today Headlines - 05.04.2026 | இரவு 10 மணி தலைப்புச் செய்திகள் | Election 2026 | Tamil News 2026-04-05 20:47</title>
+    <desc>Live YouTube stream from News18 Tamil Nadu</desc>
     <category>Live</category>
   </programme>
 </tv>

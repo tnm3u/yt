@@ -1,0 +1,12 @@
+#EXTM3U
+#EXT-X-VERSION:3
+# Channel: News18 Tamil Nadu
+# ID: UCat88i6_rELqI_prwvjspRA
+# Quality: 1080p
+# Country: UK
+# Status: LIVE (as of 20:47 UTC)
+# Generated: 2026-04-05 20:47:06 UTC
+# URL expires: ~01:47 UTC (refresh playlist if expired)
+
+#EXTINF:-1 tvg-id="UCat88i6_rELqI_prwvjspRA" tvg-logo="logos/UCat88i6_rELqI_prwvjspRA.jpg" tvg-name="News18 Tamil Nadu" group-title="Individual",News18 Tamil Nadu [1080p] 🔴 LIVE
+https://manifest.googlevideo.com/api/manifest/hls_playlist/expire/1775443625/ei/ScrSaZy9LveD0_wP7dGluQk/ip/2a09:bac5:7971:31f5::4fa:23/id/M6cRBvsYTMo.1/itag/96/source/yt_live_broadcast/requiressl/yes/ratebypass/yes/live/1/sgoap/gir%3Dyes%3Bitag%3D140/sgovp/gir%3Dyes%3Bitag%3D137/rqh/1/hls_chunk_host/rr2---sn-vgqsrndl.googlevideo.com/xpc/EgVo2aDSNQ%3D%3D/playlist_duration/30/manifest_duration/30/ss/1/ssa/1/bui/AUUZDGIA8oKb7qbGwGuEJp3LGWjO9s8Pn9rum_6ApmjYA5KlHbllRbb63OdaZkhq_2aaWwq1s1DdEJ1y/spc/jlWavZ1V35c4UFsE6HJBLAY6CsYSWkCJ-1up5NFucq3fSRaE0LFdDvbzzPZ7ysP8/vprv/1/reg/0/playlist_type/DVR/initcwndbps/4591250/met/1775422026,/mh/y4/mm/44/mn/sn-vgqsrndl/ms/lva/mv/m/mvi/2/pl/42/rms/lva,lva/dover/11/pacing/0/keepalive/yes/fexp/51565116,51565682/mt/1775421630/sparams/expire,ei,ip,id,itag,source,requiressl,ratebypass,live,sgoap,sgovp,rqh,xpc,playlist_duration,manifest_duration,ss,ssa,bui,spc,vprv,reg,playlist_type/sig/AHEqNM4wRQIgBlByvEjLW2gNl2z5NfuGjGJb5a9J3Q4-DP_wiStpzB4CIQCESNaYCNWviCKnvI-flBLVP-8ybeTDfSXvVi04EV2_6g%3D%3D/lsparams/hls_chunk_host,initcwndbps,met,mh,mm,mn,ms,mv,mvi,pl,rms/lsig/APaTxxMwRQIhAMavHl9vjrOeG8s_jWiY-7zzfoqz9w5CLoRbYhcrqOsAAiBly8rk3lpknYH6m-YNYjPhfx-YU4ziECqDx_xUZVL6hg%3D%3D/playlist/index.m3u8
