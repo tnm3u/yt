@@ -68,14 +68,12 @@ class YouTubePlaylistGenerator:
             'geo_bypass_country': country,
         }
 
-        # ✅ OPTIONAL COOKIES
         if os.path.exists(self.cookies_file):
             print("🍪 Using cookies")
             ydl_opts['cookiefile'] = self.cookies_file
         else:
             print("⚠️ No cookies")
 
-        # ✅ RETRY SYSTEM
         for attempt in range(3):
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -118,8 +116,10 @@ class YouTubePlaylistGenerator:
 
         return None
 
+    # ✅ UPDATED FUNCTION ONLY
     def generate_playlists(self, channels):
-        lines = ["#EXTM3U"]
+        m3u8_lines = ["#EXTM3U"]
+        m3u_lines = ['#EXTM3U x-tvg-url="https://example.com/epg.xml"']
 
         for ch in channels:
             if ch['status'] != 'live':
@@ -128,13 +128,28 @@ class YouTubePlaylistGenerator:
             stream = ch['streams'].get('hd') or next(iter(ch['streams'].values()))
             url = stream['url']
 
-            lines.append(f'#EXTINF:-1,{ch["name"]}')
-            lines.append(url)
+            name = ch["name"]
+            safe_id = self.safe_filename(name)
+            logo = f"{self.logos_dir}/{safe_id}.png"
+            group = "YouTube"
+
+            # --- streams.m3u8 (original behavior) ---
+            m3u8_lines.append(f'#EXTINF:-1,{name}')
+            m3u8_lines.append(url)
+
+            # --- playlist.m3u (new IPTV format) ---
+            m3u_lines.append(
+                f'#EXTINF:-1 tvg-id="{safe_id}" tvg-name="{name}" tvg-logo="{logo}" group-title="{group}",{name}'
+            )
+            m3u_lines.append(url)
 
         with open("streams.m3u8", "w") as f:
-            f.write("\n".join(lines))
+            f.write("\n".join(m3u8_lines))
 
-        print("✅ Playlist generated")
+        with open("playlist.m3u", "w") as f:
+            f.write("\n".join(m3u_lines))
+
+        print("✅ streams.m3u8 + playlist.m3u generated")
 
 def main():
     if not os.path.exists("streams.txt"):
