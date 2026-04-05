@@ -1,22 +1,19 @@
 import yt_dlp
 import time
+import random
 import re
 import os
 import json
-import signal
+import requests
+from datetime import datetime, timezone, timedelta
+from xml.etree import ElementTree as ET
+from xml.dom import minidom
 
 QUALITY_PROFILES = {
     'hd': {'min_height': 1080, 'suffix': '[HD]'},
     'mobile': {'max_height': 480, 'suffix': '[Mobile]'},
     'audio': {'format': 'bestaudio', 'suffix': '[Audio]'}
 }
-
-# ⏱️ Timeout handler (prevents GitHub Actions kill)
-def timeout_handler(signum, frame):
-    raise Exception("Timeout")
-
-signal.signal(signal.SIGALRM, timeout_handler)
-
 
 class YouTubePlaylistGenerator:
     def __init__(self, cookies_file='cookies.txt'):
@@ -65,29 +62,24 @@ class YouTubePlaylistGenerator:
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
-            'socket_timeout': 15,   # ⬅️ reduced timeout
-            'retries': 2,           # ⬅️ reduced retries
+            'socket_timeout': 30,
+            'retries': 5,
             'geo_bypass': True,
             'geo_bypass_country': country,
-            'noplaylist': True      # ⬅️ prevent delays
         }
 
+        # ✅ OPTIONAL COOKIES
         if os.path.exists(self.cookies_file):
             print("🍪 Using cookies")
             ydl_opts['cookiefile'] = self.cookies_file
         else:
             print("⚠️ No cookies")
 
-        # 🔁 Reduced retry attempts
-        for attempt in range(2):
+        # ✅ RETRY SYSTEM
+        for attempt in range(3):
             try:
-                # ⏱️ Hard timeout per URL (20 sec)
-                signal.alarm(20)
-
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info = ydl.extract_info(url, download=False)
-
-                signal.alarm(0)
 
                 if not info:
                     return None
@@ -121,16 +113,13 @@ class YouTubePlaylistGenerator:
                 }
 
             except Exception as e:
-                signal.alarm(0)
                 print(f"Retry {attempt+1}: {e}")
-                time.sleep(1)
+                time.sleep(2)
 
         return None
 
-    # ✅ UPDATED PLAYLIST GENERATOR
     def generate_playlists(self, channels):
-        m3u8_lines = ["#EXTM3U"]
-        m3u_lines = ['#EXTM3U x-tvg-url="https://example.com/epg.xml"']
+        lines = ["#EXTM3U"]
 
         for ch in channels:
             if ch['status'] != 'live':
@@ -139,29 +128,13 @@ class YouTubePlaylistGenerator:
             stream = ch['streams'].get('hd') or next(iter(ch['streams'].values()))
             url = stream['url']
 
-            name = ch["name"]
-            safe_id = self.safe_filename(name)
-            logo = f"{self.logos_dir}/{safe_id}.png"
-            group = "YouTube"
-
-            # streams.m3u8 (original)
-            m3u8_lines.append(f'#EXTINF:-1,{name}')
-            m3u8_lines.append(url)
-
-            # playlist.m3u (enhanced)
-            m3u_lines.append(
-                f'#EXTINF:-1 tvg-id="{safe_id}" tvg-name="{name}" tvg-logo="{logo}" group-title="{group}",{name}'
-            )
-            m3u_lines.append(url)
+            lines.append(f'#EXTINF:-1,{ch["name"]}')
+            lines.append(url)
 
         with open("streams.m3u8", "w") as f:
-            f.write("\n".join(m3u8_lines))
+            f.write("\n".join(lines))
 
-        with open("playlist.m3u", "w") as f:
-            f.write("\n".join(m3u_lines))
-
-        print("✅ streams.m3u8 + playlist.m3u generated")
-
+        print("✅ Playlist generated")
 
 def main():
     if not os.path.exists("streams.txt"):
@@ -171,9 +144,6 @@ def main():
     with open("streams.txt") as f:
         urls = [l.strip() for l in f if l.strip()]
 
-    # ⚠️ Safety limit (prevents GitHub kill)
-    urls = urls[:50]
-
     gen = YouTubePlaylistGenerator()
 
     results = []
@@ -181,14 +151,10 @@ def main():
         print("Processing:", url)
         data = gen.get_stream_info(url)
         if data:
-            print("✔ Added:", data['name'], data['status'])
             results.append(data)
-        else:
-            print("✖ Failed:", url)
 
     gen.generate_playlists(results)
     gen.save_cache()
-
 
 if __name__ == "__main__":
     main()
