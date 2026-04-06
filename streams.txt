@@ -14,6 +14,11 @@ https://www.youtube.com/@TamilJanamNews/live
 # English News
 https://www.youtube.com/@TimesNow/live
 https://www.youtube.com/@ETNow/live
+https://www.youtube.com/@cnnnews18/live
+https://www.youtube.com/@indiatoday/live
+https://www.youtube.com/@aljazeeraenglish/live
+https://www.youtube.com/@WION/live
+https://www.youtube.com/@newsxlive/live
 
 # Malayalam News
 https://www.youtube.com/@tvjanam/live
@@ -21,5 +26,8 @@ https://www.youtube.com/@tvjanam/live
 # Devotional
 https://www.youtube.com/@svbcttdlive9085/live
 
-#Telugu
+# Telugu
 https://www.youtube.com/@bhakthitv/live
+
+# Kids
+https://www.youtube.com/@BoomerangUK/live
