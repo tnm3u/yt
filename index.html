@@ -1,12 +1,65 @@
-<!-- Add this after the header div -->
-<div class="playlist-section">
-    <h2>📋 Available Playlists</h2>
-    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;">
-        <a href="streams.m3u8" class="btn">▶️ Main Playlist (Auto HD)</a>
-        <a href="streams_hd.m3u8" class="btn">🎥 HD Only (720p+)</a>
-        <a href="streams_mobile.m3u8" class="btn">📱 Mobile (480p)</a>
-        <a href="streams_audio.m3u8" class="btn">🎧 Audio Only</a>
-        <a href="epg.xml" class="btn">📺 EPG TV Guide</a>
-        <a href="stats.json" class="btn">📊 Stats JSON</a>
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>RENAN TV</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="google-site-verification" content="jDk1s6N-IOBTrNM4PV6WqMvZVyTrDHe8nv0tHPHHvaQ" />
+  <link rel="icon" href="https://i.imgur.com/opmOlZ5.png" type="image/x-icon">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body> <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">RENAN TV</div>
+      <button id="backButton">← Back to Channels</button>
     </div>
-</div>
+    <div class="header-controls">
+      <button id="muteButton" title="Toggle Mute">🔊</button>
+      <input type="range" id="volumeSlider" min="0" max="100" value="60" title="Volume">
+      <a id="supportButton" href="https://www.buymeacoffee.com/renanbazinin" target="_blank">
+        <button class="channel-button-support">Support Me</button>
+      </a>
+    </div>
+  </div>
+
+  <!-- Main Container -->
+  <div class="main-container">
+    <!-- Side Menu -->
+    <div class="side-menu" id="sideMenu">
+      <div style="padding: 1rem 0; border-bottom: 1px solid var(--glass-border); margin-bottom: 1rem;">
+        <h3 style="margin: 0; color: var(--text-primary); font-size: 1.1rem; font-weight: 600;">Channel Categories</h3>
+      </div>
+      <!-- Menu items will be populated here -->
+    </div>
+
+    <!-- Content Area -->
+    <div class="content-area" id="contentArea">
+      <!-- Channel Picker -->
+      <div id="channelPicker">
+        <div class="loading">Loading channels...</div>
+      </div>
+    </div>
+  </div>
+  <!-- Video Container -->
+  <div id="videoContainer"></div>
+  <div id="channel-input-display" class="hidden">
+    <span>_</span>
+    <span>_</span>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <!-- Modular JS files loaded in dependency order -->
+  <script src="js/state.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/hls-player.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/channels.js"></script>
+  <script src="js/helperFetcher.js"></script>
+  <script src="js/keyboard.js"></script>
+  <script src="js/main.js"></script>
+</body>
+
+</html>

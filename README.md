@@ -1,7 +1,5 @@
-# YouTube Live to M3U8 Generator
+# myTV - Modular JavaScript Structure
 
-This repository automatically generates M3U8 playlists from YouTube live streams using GitHub Actions.
+## Overview
 
-## Files
-- `streams.txt`: List of YouTube channels to monitor
-- `.github/workflows/update-playlist.yml`: The automation workflow
+The application has been refactored into ES6 modules for better maintainability and separation of concerns.
