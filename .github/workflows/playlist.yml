@@ -1,0 +1,48 @@
+name: Auto Update Playlist
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # every 6 hours
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-playlist:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Fetch Playlist (Exact Copy)
+        run: |
+          echo "Downloading from secret URL..."
+          curl -s -L "$SOURCE_URL" -o playlist.m3u
+
+      - name: Validate Download
+        run: |
+          if [ ! -s playlist.m3u ]; then
+            echo "Download failed or empty file!"
+            exit 1
+          fi
+
+      - name: Commit & Push Changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions@github.com"
+
+          git add playlist.m3u
+
+          if git diff --cached --quiet; then
+            echo "No changes detected"
+          else
+            git commit -m "🔄 Auto update playlist (6hr)"
+            git push
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    env:
+      SOURCE_URL: ${{ secrets.SOURCE_URL }}
