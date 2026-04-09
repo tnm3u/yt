@@ -3,7 +3,7 @@ name: YouTube Live M3U8 Generator
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/15 * * * *'   # every 15 minutes (stable)
   push:
     paths:
       - 'streams.txt'
@@ -17,17 +17,27 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  PYTHONUNBUFFERED: "1"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 jobs:
   generate:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
     steps:
+      # -----------------------------
+      # CHECKOUT (FAST)
+      # -----------------------------
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
+      # -----------------------------
+      # PYTHON + CACHE
+      # -----------------------------
       - name: Setup Python with cache
         uses: actions/setup-python@v5
         with:
@@ -36,25 +46,42 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install yt-dlp requests
+          pip install -r requirements.txt
 
+      # -----------------------------
+      # COOKIES (OPTIONAL)
+      # -----------------------------
       - name: Create cookies file (optional)
         env:
           COOKIES: ${{ secrets.COOKIES_TXT }}
         run: |
           if [ -n "$COOKIES" ]; then
+            echo "Using cookies"
             echo "$COOKIES" > cookies.txt
+          else
+            echo "No cookies provided"
           fi
 
+      # -----------------------------
+      # DIRECTORIES
+      # -----------------------------
       - name: Create directories
         run: |
           mkdir -p logos channels
           touch logos/.gitkeep channels/.gitkeep
 
+      # -----------------------------
+      # RUN SCRIPT
+      # -----------------------------
       - name: Run playlist generator
         run: |
+          echo "Starting generation..."
           python3 generate.py
+          echo "Generation complete"
 
+      # -----------------------------
+      # COMMIT CHANGES
+      # -----------------------------
       - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
@@ -63,13 +90,16 @@ jobs:
           git add streams*.m3u8 epg.xml stats.json logos/ channels/ || true
 
           if git diff --staged --quiet; then
-            echo "No changes"
+            echo "No changes to commit"
             exit 0
           fi
 
-          git commit -m "Auto update - $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git commit -m "Auto update playlist - $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
 
+      # -----------------------------
+      # CLEANUP
+      # -----------------------------
       - name: Cleanup
         if: always()
         run: |
