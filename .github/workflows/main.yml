@@ -3,7 +3,7 @@ name: YouTube Live M3U8 Generator
 on:
   workflow_dispatch:
   schedule:
-    - cron: '0 */5 * * *'
+    - cron: '*/15 * * * *'
   push:
     paths:
       - 'streams.txt'
@@ -15,102 +15,62 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: false
-
-env:
-  PYTHONUNBUFFERED: "1"
+  cancel-in-progress: true
 
 jobs:
   generate:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 20
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-      - name: Setup Python & dependencies
+      - name: Setup Python with cache
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
         run: |
-          python3 -m pip install --upgrade pip
           pip install yt-dlp requests
-          echo "yt-dlp version: $(yt-dlp --version)"
 
-      # -----------------------------
-      # OPTIONAL: Cloudflare WARP
-      # -----------------------------
-      - name: Setup Cloudflare WARP
-        continue-on-error: true
-        run: |
-          echo "Setting up WARP..."
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq wireguard-tools iptables
-
-          curl -fsSL https://github.com/ViRb3/wgcf/releases/download/v2.2.22/wgcf_2.2.22_linux_amd64 -o wgcf
-          chmod +x wgcf
-          sudo mv wgcf /usr/local/bin/
-
-          wgcf register --accept-tos || true
-          wgcf generate || true
-
-          sudo mkdir -p /etc/wireguard
-          sudo cp wgcf-profile.conf /etc/wireguard/wgcf.conf 2>/dev/null || true
-
-          sudo wg-quick up /etc/wireguard/wgcf.conf || echo "WARP failed, continuing without VPN"
-
-      # -----------------------------
-      # OPTIONAL COOKIES (FIXED)
-      # -----------------------------
       - name: Create cookies file (optional)
         env:
           COOKIES: ${{ secrets.COOKIES_TXT }}
         run: |
-          if [ -z "$COOKIES" ]; then
-            echo "No cookies provided → running without cookies"
-          else
-            echo "Cookies detected → creating cookies.txt"
+          if [ -n "$COOKIES" ]; then
             echo "$COOKIES" > cookies.txt
           fi
 
-      # -----------------------------
-      # DIRECTORIES
-      # -----------------------------
       - name: Create directories
         run: |
           mkdir -p logos channels
           touch logos/.gitkeep channels/.gitkeep
 
-      # -----------------------------
-      # RUN SCRIPT
-      # -----------------------------
       - name: Run playlist generator
         run: |
-          echo "Starting generation..."
           python3 generate.py
-          echo "Generation complete"
 
-      # -----------------------------
-      # COMMIT CHANGES
-      # -----------------------------
       - name: Commit and push changes
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          git add streams*.m3u8 epg.xml stats.json logos/ channels/ 2>/dev/null || true
+          git add streams*.m3u8 epg.xml stats.json logos/ channels/ || true
 
-          if git diff --cached --quiet; then
-            echo "No changes to commit"
+          if git diff --staged --quiet; then
+            echo "No changes"
             exit 0
           fi
 
-          git commit -m "Auto update playlist - $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git commit -m "Auto update - $(date -u +'%Y-%m-%d %H:%M UTC')"
           git push
 
-      # -----------------------------
-      # CLEANUP
-      # -----------------------------
-      - name: Cleanup sensitive files
+      - name: Cleanup
         if: always()
         run: |
-          echo "Cleaning up..."
-          rm -f cookies.txt wgcf-profile.conf wgcf-account.toml 2>/dev/null || true
+          rm -f cookies.txt
