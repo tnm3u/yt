@@ -26,21 +26,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
 
+    # ✅ Map secrets to environment variables for safe conditional checks
+    env:
+      TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
     steps:
-      # ✅ Checkout repository using built-in GITHUB_TOKEN
+      # ✅ Checkout repository
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # ✅ Setup Python and install dependencies
+      # ✅ Setup Python and dependencies
       - name: Setup Python & dependencies
         run: |
           python3 -m pip install --upgrade pip
           pip3 install yt-dlp requests
           echo "✅ yt-dlp version: $(yt-dlp --version)"
 
-      # ✅ Optional: Setup Cloudflare WARP (for geo-restricted streams)
+      # ✅ Optional: Setup Cloudflare WARP
       - name: Setup Cloudflare WARP
         continue-on-error: true
         run: |
@@ -57,7 +62,7 @@ jobs:
           sudo wg-quick up /etc/wireguard/wgcf.conf || true
           echo "✅ WARP setup complete"
 
-      # ✅ Create cookies file securely (required for some YouTube streams)
+      # ✅ Create cookies file securely (optional)
       - name: Create cookies file securely
         env:
           COOKIES: ${{ secrets.COOKIES_TXT }}
@@ -85,7 +90,7 @@ jobs:
           python3 generate.py
           echo "✅ Generation complete"
 
-      # ✅ Load statistics from stats.json
+      # ✅ Load statistics
       - name: Load stats
         id: stats
         run: |
@@ -121,7 +126,7 @@ jobs:
           EOF
           echo "✅ GitHub Pages files created"
 
-      # ✅ Display generated files (for debugging)
+      # ✅ Show generated files (for debugging)
       - name: Show generated files
         run: |
           echo "📄 Generated Files:"
@@ -133,10 +138,8 @@ jobs:
           echo "📁 Logos directory:"
           ls -la logos/ | head -10
 
-      # ✅ Commit and push changes using GITHUB_TOKEN
+      # ✅ Commit and push changes
       - name: Commit and push changes
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -158,9 +161,9 @@ jobs:
           git push origin HEAD:main
           echo "✅ Changes pushed successfully"
 
-      # ✅ Optional Telegram notification on success
+      # ✅ Telegram notification on success (only if secrets exist)
       - name: Send Telegram Notification
-        if: success() && github.event_name != 'pull_request' && secrets.TELEGRAM_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        if: ${{ success() && github.event_name != 'pull_request' && env.TELEGRAM_TOKEN != '' && env.TELEGRAM_CHAT_ID != '' }}
         uses: cbrgm/telegram-github-action@v1
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
@@ -187,9 +190,9 @@ jobs:
           rm -f cookies.txt wgcf-profile.conf wgcf-account.toml 2>/dev/null || true
           echo "🧹 Cleaned up sensitive files"
 
-      # ✅ Optional Telegram notification on failure
+      # ✅ Telegram notification on failure (only if secrets exist)
       - name: Send failure notification
-        if: failure() && secrets.TELEGRAM_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != ''
+        if: ${{ failure() && env.TELEGRAM_TOKEN != '' && env.TELEGRAM_CHAT_ID != '' }}
         uses: cbrgm/telegram-github-action@v1
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
