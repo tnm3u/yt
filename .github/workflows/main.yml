@@ -39,10 +39,15 @@ jobs:
           fetch-depth: 0
 
       # ✅ Setup Python and dependencies
-      - name: Setup Python & dependencies
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
         run: |
-          python3 -m pip install --upgrade pip
-          pip3 install yt-dlp requests
+          python -m pip install --upgrade pip
+          pip install yt-dlp requests
           echo "✅ yt-dlp version: $(yt-dlp --version)"
 
       # ✅ Optional: Setup Cloudflare WARP
@@ -87,7 +92,7 @@ jobs:
         id: generate
         run: |
           echo "🚀 Starting playlist generation..."
-          python3 generate.py
+          python generate.py
           echo "✅ Generation complete"
 
       # ✅ Load statistics
@@ -95,9 +100,9 @@ jobs:
         id: stats
         run: |
           if [ -f stats.json ]; then
-            ACTIVE=$(python3 -c "import json; print(json.load(open('stats.json')).get('live', 0))")
-            TOTAL=$(python3 -c "import json; print(json.load(open('stats.json')).get('total', 0))")
-            HD=$(python3 -c "import json; print(json.load(open('stats.json')).get('qualities', {}).get('1080p', 0))")
+            ACTIVE=$(python -c "import json; print(json.load(open('stats.json')).get('live', 0))")
+            TOTAL=$(python -c "import json; print(json.load(open('stats.json')).get('total', 0))")
+            HD=$(python -c "import json; print(json.load(open('stats.json')).get('qualities', {}).get('1080p', 0))")
           else
             ACTIVE=0
             TOTAL=0
@@ -161,13 +166,13 @@ jobs:
           git push origin HEAD:main
           echo "✅ Changes pushed successfully"
 
-      # ✅ Telegram notification on success (only if secrets exist)
+      # ✅ Telegram notification on success
       - name: Send Telegram Notification
         if: ${{ success() && github.event_name != 'pull_request' && env.TELEGRAM_TOKEN != '' && env.TELEGRAM_CHAT_ID != '' }}
         uses: cbrgm/telegram-github-action@v1
         with:
-          token: ${{ secrets.TELEGRAM_TOKEN }}
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ env.TELEGRAM_TOKEN }}
+          to: ${{ env.TELEGRAM_CHAT_ID }}
           message: |
             📺 *YouTube Playlist Updated*
 
@@ -190,13 +195,13 @@ jobs:
           rm -f cookies.txt wgcf-profile.conf wgcf-account.toml 2>/dev/null || true
           echo "🧹 Cleaned up sensitive files"
 
-      # ✅ Telegram notification on failure (only if secrets exist)
+      # ✅ Telegram notification on failure
       - name: Send failure notification
         if: ${{ failure() && env.TELEGRAM_TOKEN != '' && env.TELEGRAM_CHAT_ID != '' }}
         uses: cbrgm/telegram-github-action@v1
         with:
-          token: ${{ secrets.TELEGRAM_TOKEN }}
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ env.TELEGRAM_TOKEN }}
+          to: ${{ env.TELEGRAM_CHAT_ID }}
           message: |
             ❌ *Workflow Failed*
 
