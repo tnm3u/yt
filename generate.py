@@ -1,30 +1,14 @@
 import yt_dlp
 import time
-import random
 import re
 import os
 import json
-import requests
-from datetime import datetime, timezone, timedelta
-from xml.etree import ElementTree as ET
-from xml.dom import minidom
-
-QUALITY_PROFILES = {
-    'hd': {'min_height': 1080, 'suffix': '[HD]'},
-    'mobile': {'max_height': 480, 'suffix': '[Mobile]'},
-    'audio': {'format': 'bestaudio', 'suffix': '[Audio]'}
-}
 
 class YouTubePlaylistGenerator:
     def __init__(self, cookies_file='cookies.txt'):
         self.cookies_file = cookies_file
         self.cache_file = '.channel_cache.json'
-        self.logos_dir = 'logos'
-        self.channels_dir = 'channels'
         self.load_cache()
-
-        for d in [self.logos_dir, self.channels_dir]:
-            os.makedirs(d, exist_ok=True)
 
     def load_cache(self):
         try:
@@ -41,120 +25,91 @@ class YouTubePlaylistGenerator:
         safe = re.sub(r'[^\w\s-]', '', name).strip()
         return re.sub(r'[-\s]+', '_', safe).lower()
 
-    def detect_channel_country(self, name):
-        name = name.lower()
-        if any(k in name for k in ['nigeria', 'lagos', 'abuja', 'naija']):
-            return 'NG'
-        if any(k in name for k in ['ghana', 'accra']):
-            return 'GH'
-        return 'US'
-
     def get_stream_info(self, url):
-        try:
-            with yt_dlp.YoutubeDL({'quiet': True}) as ydl:
-                info = ydl.extract_info(url, download=False, process=False)
-                channel_name = info.get('channel', '') if info else ''
-        except:
-            channel_name = ''
-
-        country = self.detect_channel_country(channel_name)
-
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
+            'retries': 3,
             'socket_timeout': 30,
-            'retries': 5,
             'geo_bypass': True,
-            'geo_bypass_country': country,
+            'format': 'best[ext=m3u8]/best',
         }
 
-        # ✅ OPTIONAL COOKIES
+        # Optional cookies
         if os.path.exists(self.cookies_file):
-            print("🍪 Using cookies")
             ydl_opts['cookiefile'] = self.cookies_file
-        else:
-            print("⚠️ No cookies")
+            print("🍪 Using cookies")
 
-        # ✅ RETRY SYSTEM
-        for attempt in range(3):
-            try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info = ydl.extract_info(url, download=False)
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
 
-                if not info:
-                    return None
+            if not info:
+                return None
 
-                formats = [f for f in info.get('formats', []) if f.get('url')]
-                formats.sort(key=lambda x: x.get('height', 0), reverse=True)
+            # ❌ Skip non-live streams
+            if not info.get('is_live'):
+                print("⛔ Not live:", url)
+                return None
 
-                streams = {}
+            stream_url = info.get('url')
 
-                for f in formats:
-                    if f.get('height', 0) >= 720:
-                        streams['hd'] = {'url': f['url'], 'height': f.get('height')}
-                        break
+            if not stream_url:
+                print("❌ No stream URL:", url)
+                return None
 
-                for f in reversed(formats):
-                    if f.get('height', 0) <= 480:
-                        streams['mobile'] = {'url': f['url'], 'height': f.get('height')}
-                        break
+            print("✅ Live:", info.get('channel'))
 
-                if not streams and formats:
-                    streams['main'] = {'url': formats[0]['url']}
+            return {
+                'name': info.get('channel', 'Unknown'),
+                'url': stream_url
+            }
 
-                return {
-                    'status': 'live' if info.get('is_live') else 'offline',
-                    'name': info.get('channel', 'Unknown'),
-                    'title': info.get('title', ''),
-                    'channel_id': info.get('channel_id'),
-                    'video_id': info.get('id'),
-                    'streams': streams,
-                    'country': country
-                }
+        except Exception as e:
+            print("❌ Error:", url, "|", str(e))
+            return None
 
-            except Exception as e:
-                print(f"Retry {attempt+1}: {e}")
-                time.sleep(2)
-
-        return None
-
-    def generate_playlists(self, channels):
+    def generate_playlist(self, channels):
         lines = ["#EXTM3U"]
 
         for ch in channels:
-            if ch['status'] != 'live':
-                continue
-
-            stream = ch['streams'].get('hd') or next(iter(ch['streams'].values()))
-            url = stream['url']
-
             lines.append(f'#EXTINF:-1,{ch["name"]}')
-            lines.append(url)
+            lines.append('#EXTVLCOPT:http-user-agent=Mozilla/5.0')
+            lines.append('#EXTVLCOPT:http-referrer=https://www.youtube.com/')
+            lines.append(ch["url"])
 
         with open("streams.m3u8", "w") as f:
             f.write("\n".join(lines))
 
-        print("✅ Playlist generated")
+        print("✅ Playlist generated: streams.m3u8")
+
 
 def main():
     if not os.path.exists("streams.txt"):
-        print("Missing streams.txt")
+        print("❌ streams.txt missing")
         return
 
     with open("streams.txt") as f:
-        urls = [l.strip() for l in f if l.strip()]
+        urls = [l.strip() for l in f if l.strip() and not l.startswith("#")]
 
     gen = YouTubePlaylistGenerator()
 
     results = []
+
     for url in urls:
-        print("Processing:", url)
+        print("🔄 Processing:", url)
         data = gen.get_stream_info(url)
         if data:
             results.append(data)
+        time.sleep(1)  # avoid rate-limit
 
-    gen.generate_playlists(results)
+    if not results:
+        print("❌ No live streams found")
+        return
+
+    gen.generate_playlist(results)
     gen.save_cache()
+
 
 if __name__ == "__main__":
     main()
